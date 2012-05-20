@@ -1,0 +1,296 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		422B527D1569386900F01751 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 422B527C1569386900F01751 /* UIKit.framework */; };
+		422B527F1569386900F01751 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 422B527E1569386900F01751 /* Foundation.framework */; };
+		422B52811569386900F01751 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 422B52801569386900F01751 /* CoreGraphics.framework */; };
+		422B52871569386900F01751 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 422B52851569386900F01751 /* InfoPlist.strings */; };
+		422B52891569386900F01751 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52881569386900F01751 /* main.m */; };
+		422B528D1569386900F01751 /* DSTAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B528C1569386900F01751 /* DSTAppDelegate.m */; };
+		422B52901569386900F01751 /* DSTViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B528F1569386900F01751 /* DSTViewController.m */; };
+		422B52931569386900F01751 /* DSTViewController_iPhone.xib in Resources */ = {isa = PBXBuildFile; fileRef = 422B52911569386900F01751 /* DSTViewController_iPhone.xib */; };
+		422B52961569386900F01751 /* DSTViewController_iPad.xib in Resources */ = {isa = PBXBuildFile; fileRef = 422B52941569386900F01751 /* DSTViewController_iPad.xib */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		422B52781569386900F01751 /* StorageEngine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StorageEngine.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		422B527C1569386900F01751 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		422B527E1569386900F01751 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		422B52801569386900F01751 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		422B52841569386900F01751 /* StorageEngine-Info.plist */ = {isa = PBXFileReference; path = "StorageEngine-Info.plist"; sourceTree = "<group>"; };
+		422B52861569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		422B52881569386900F01751 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		422B528A1569386900F01751 /* StorageEngine-Prefix.pch */ = {isa = PBXFileReference; path = "StorageEngine-Prefix.pch"; sourceTree = "<group>"; };
+		422B528B1569386900F01751 /* DSTAppDelegate.h */ = {isa = PBXFileReference; path = DSTAppDelegate.h; sourceTree = "<group>"; };
+		422B528C1569386900F01751 /* DSTAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DSTAppDelegate.m; sourceTree = "<group>"; };
+		422B528E1569386900F01751 /* DSTViewController.h */ = {isa = PBXFileReference; path = DSTViewController.h; sourceTree = "<group>"; };
+		422B528F1569386900F01751 /* DSTViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DSTViewController.m; sourceTree = "<group>"; };
+		422B52921569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/DSTViewController_iPhone.xib; sourceTree = "<group>"; };
+		422B52951569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/DSTViewController_iPad.xib; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		422B52751569386900F01751 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				422B527D1569386900F01751 /* UIKit.framework in Frameworks */,
+				422B527F1569386900F01751 /* Foundation.framework in Frameworks */,
+				422B52811569386900F01751 /* CoreGraphics.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		422B526D1569386900F01751 = {
+			isa = PBXGroup;
+			children = (
+				422B52821569386900F01751 /* StorageEngine */,
+				422B527B1569386900F01751 /* Frameworks */,
+				422B52791569386900F01751 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		422B52791569386900F01751 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				422B52781569386900F01751 /* StorageEngine.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		422B527B1569386900F01751 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				422B527C1569386900F01751 /* UIKit.framework */,
+				422B527E1569386900F01751 /* Foundation.framework */,
+				422B52801569386900F01751 /* CoreGraphics.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		422B52821569386900F01751 /* StorageEngine */ = {
+			isa = PBXGroup;
+			children = (
+				422B528B1569386900F01751 /* DSTAppDelegate.h */,
+				422B528C1569386900F01751 /* DSTAppDelegate.m */,
+				422B528E1569386900F01751 /* DSTViewController.h */,
+				422B528F1569386900F01751 /* DSTViewController.m */,
+				422B52911569386900F01751 /* DSTViewController_iPhone.xib */,
+				422B52941569386900F01751 /* DSTViewController_iPad.xib */,
+				422B52831569386900F01751 /* Supporting Files */,
+			);
+			path = StorageEngine;
+			sourceTree = "<group>";
+		};
+		422B52831569386900F01751 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				422B52841569386900F01751 /* StorageEngine-Info.plist */,
+				422B52851569386900F01751 /* InfoPlist.strings */,
+				422B52881569386900F01751 /* main.m */,
+				422B528A1569386900F01751 /* StorageEngine-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		422B52771569386900F01751 /* StorageEngine */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 422B52991569386900F01751 /* Build configuration list for PBXNativeTarget "StorageEngine" */;
+			buildPhases = (
+				422B52741569386900F01751 /* Sources */,
+				422B52751569386900F01751 /* Frameworks */,
+				422B52761569386900F01751 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StorageEngine;
+			productName = StorageEngine;
+			productReference = 422B52781569386900F01751 /* StorageEngine.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		422B526F1569386900F01751 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				CLASSPREFIX = DST;
+				LastUpgradeCheck = 0430;
+			};
+			buildConfigurationList = 422B52721569386900F01751 /* Build configuration list for PBXProject "StorageEngine" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 422B526D1569386900F01751;
+			productRefGroup = 422B52791569386900F01751 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				422B52771569386900F01751 /* StorageEngine */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		422B52761569386900F01751 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				422B52871569386900F01751 /* InfoPlist.strings in Resources */,
+				422B52931569386900F01751 /* DSTViewController_iPhone.xib in Resources */,
+				422B52961569386900F01751 /* DSTViewController_iPad.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		422B52741569386900F01751 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				422B52891569386900F01751 /* main.m in Sources */,
+				422B528D1569386900F01751 /* DSTAppDelegate.m in Sources */,
+				422B52901569386900F01751 /* DSTViewController.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		422B52851569386900F01751 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				422B52861569386900F01751 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		422B52911569386900F01751 /* DSTViewController_iPhone.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				422B52921569386900F01751 /* en */,
+			);
+			name = DSTViewController_iPhone.xib;
+			sourceTree = "<group>";
+		};
+		422B52941569386900F01751 /* DSTViewController_iPad.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				422B52951569386900F01751 /* en */,
+			);
+			name = DSTViewController_iPad.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		422B52971569386900F01751 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		422B52981569386900F01751 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		422B529A1569386900F01751 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "StorageEngine/StorageEngine-Prefix.pch";
+				INFOPLIST_FILE = "StorageEngine/StorageEngine-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		422B529B1569386900F01751 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "StorageEngine/StorageEngine-Prefix.pch";
+				INFOPLIST_FILE = "StorageEngine/StorageEngine-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		422B52721569386900F01751 /* Build configuration list for PBXProject "StorageEngine" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				422B52971569386900F01751 /* Debug */,
+				422B52981569386900F01751 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		422B52991569386900F01751 /* Build configuration list for PBXNativeTarget "StorageEngine" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				422B529A1569386900F01751 /* Debug */,
+				422B529B1569386900F01751 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 422B526F1569386900F01751 /* Project object */;
+}
