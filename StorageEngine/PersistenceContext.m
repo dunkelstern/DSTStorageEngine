@@ -95,7 +95,7 @@
 
 - (BOOL)createTable:(NSString *)name columns:(NSDictionary *)columns version:(NSUInteger)version {
 	if ([self tableExists:name]) {
-		FailLog(@"Table exists already");
+		FailLog(@"Table %@ exists already", name);
 		return NO;
 	}
 	

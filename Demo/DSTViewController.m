@@ -32,6 +32,8 @@
 	
 	// save the object and get the object id in return
 	NSInteger pkid = [o save];
+	(void)pkid; // silence unused variable warning
+	
 	NSLog(@"object is %@", ([o isDirty]) ? @"dirty" : @"clean");
 
 	[o setAFloat:2.45];
