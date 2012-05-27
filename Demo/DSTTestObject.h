@@ -8,7 +8,7 @@
 
 #import "DSTPersistentObject.h"
 
-@interface DSTTestObject : DSTPersistentObject <PersistentObjectSubclass>
+@interface DSTTestObject : DSTPersistentObject <DSTPersistentObjectSubclass>
 
 @property (nonatomic, assign) CGFloat aFloat;
 @property (nonatomic, assign) CGSize aSize;

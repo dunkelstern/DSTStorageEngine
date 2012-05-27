@@ -32,7 +32,7 @@
 #import <Foundation/Foundation.h>
 #import "DSTPersistenceContext.h"
 
-@protocol PersistentObjectSubclass <NSObject, NSCoding>
+@protocol DSTPersistentObjectSubclass <NSObject, NSCoding>
 - (void)setDefaults;
 - (NSUInteger)version;
 
@@ -40,7 +40,7 @@
 - (void)didLoadFromContext;
 @end
 
-@interface DSTPersistentObject : NSObject <NSCoding, PersistentObjectSubclass> {
+@interface DSTPersistentObject : NSObject <NSCoding, DSTPersistentObjectSubclass> {
     __strong DSTPersistenceContext *context;
 }
 
