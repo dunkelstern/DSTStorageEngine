@@ -104,3 +104,4 @@ Simple Objective-C storage backend based on SQLite 3. Concepts borrowed heavily 
 * Implement fault objects to allow loading only the part of the tree hierarchy that is accessed
 * Recursive saving of object trees
 * Detect referencing cycles and bail out if found instead of looping endlessly
+* Allow objects to migrate their tables if the data-model changes (version should be checked and not just inserted into the versioning table)
