@@ -40,7 +40,8 @@ Simple Objective-C storage backend based on SQLite 3. Concepts borrowed heavily 
         // implementation, implement the delegate defined above
         @implementation TestObject
         @synthesize aFloat, aSize, aString;
-        
+        @synthesize readonlyValue;        
+
         - (NSUInteger)version {
             // currently we have object version 1,
             // increase this if you make changes to the properties
