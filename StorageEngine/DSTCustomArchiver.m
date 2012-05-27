@@ -6,16 +6,16 @@
 //  Copyright (c) 2012 Johannes Schriewer. All rights reserved.
 //
 
-#import "CustomArchiver.h"
-@interface CustomUnArchiver () {
-    __strong PersistenceContext *context;
+#import "DSTCustomArchiver.h"
+@interface DSTCustomUnArchiver () {
+    __strong DSTPersistenceContext *context;
 }
 @end
 
-@implementation CustomUnArchiver
+@implementation DSTCustomUnArchiver
 @synthesize context;
 
-- (id)initForReadingWithData:(NSData *)data inContext:(PersistenceContext *)theContext {
+- (id)initForReadingWithData:(NSData *)data inContext:(DSTPersistenceContext *)theContext {
     self = [super initForReadingWithData:data];
     if (self) {
         context = theContext;
@@ -27,8 +27,8 @@
     @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"You have to supply a context" userInfo:nil];
 }
 
-+ (id)unarchiveObjectWithData:(NSData *)data inContext:(PersistenceContext *)context {
-	CustomUnArchiver *unarchiver = [[CustomUnArchiver alloc] initForReadingWithData:data inContext:context];
++ (id)unarchiveObjectWithData:(NSData *)data inContext:(DSTPersistenceContext *)context {
+	DSTCustomUnArchiver *unarchiver = [[DSTCustomUnArchiver alloc] initForReadingWithData:data inContext:context];
 	return [unarchiver decodeObjectForKey:@"root"];
 }
 

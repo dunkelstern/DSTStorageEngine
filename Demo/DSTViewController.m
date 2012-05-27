@@ -7,7 +7,7 @@
 //
 
 #import "DSTViewController.h"
-#import "StorageEngine.h"
+#import "DSTStorageEngine.h"
 #import "DSTTestObject.h"
 
 @interface DSTViewController ()
@@ -21,7 +21,7 @@
     [super viewDidLoad];
 
 	// create a persistence context
-	PersistenceContext *persist = [[PersistenceContext alloc] initWithDatabase:@"test.sqlite"];
+	DSTPersistenceContext *persist = [[DSTPersistenceContext alloc] initWithDatabase:@"test.sqlite"];
 
 #if 1
 	// instanciate a persistent object

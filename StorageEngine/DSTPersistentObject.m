@@ -18,12 +18,12 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 
-#import "PersistentObject.h"
-#import "CustomArchiver.h"
-#import "StorageEngine_Internal.h"
+#import "DSTPersistentObject.h"
+#import "DSTCustomArchiver.h"
+#import "DSTStorageEngine_Internal.h"
 
 
-@interface PersistentObject () {
+@interface DSTPersistentObject () {
     NSInteger identifier;
 	BOOL dirty;
 }
@@ -39,12 +39,12 @@
 - (void)loadFromContext;
 @end
 
-@implementation PersistentObject
+@implementation DSTPersistentObject
 @synthesize identifier;
 @synthesize dirty;
 
 #pragma mark - Setup
-- (PersistentObject *)initWithContext:(PersistenceContext *)theContext {
+- (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)theContext {
     self = [super init];
     if (self) {
         context = theContext;
@@ -63,7 +63,7 @@
     return self;
 }
 
-- (PersistentObject *)initWithIdentifier:(NSInteger)theIdentifier fromContext:(PersistenceContext *)theContext {
+- (DSTPersistentObject *)initWithIdentifier:(NSInteger)theIdentifier fromContext:(DSTPersistenceContext *)theContext {
 	if (![theContext tableExists:[self tableName]]) {
 		return nil; // bail out
 	}
@@ -103,11 +103,11 @@
 }
 
 #pragma mark - NSCoding
-- (PersistentObject *)initWithCoder:(NSCoder *)coder {
-    if (![coder isKindOfClass:[CustomUnArchiver class]]) {
+- (DSTPersistentObject *)initWithCoder:(NSCoder *)coder {
+    if (![coder isKindOfClass:[DSTCustomUnArchiver class]]) {
         @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"PersistentObject can only be unarchived by CustomArchiver" userInfo:nil];
     }
-    CustomUnArchiver *archiver = (CustomUnArchiver *)coder;
+    DSTCustomUnArchiver *archiver = (DSTCustomUnArchiver *)coder;
     
 	self = [[[self class] alloc] initWithIdentifier:[[archiver valueForKey:@"identifier"] integerValue] fromContext:[archiver context]];
     if (self) {
@@ -248,7 +248,7 @@
 			NSMutableArray *result = [[NSMutableArray alloc] initWithCapacity:[array count]];
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
-				[result addObject:[CustomUnArchiver unarchiveObjectWithData:content inContext:context]];
+				[result addObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:context]];
 			}
 			[self setValue:[NSArray arrayWithArray:result] forKey:propertyName];
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
@@ -261,15 +261,15 @@
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
 				NSString *key = [data objectForKey:@"key"];
-				[result setObject:[CustomUnArchiver unarchiveObjectWithData:content inContext:context] forKey:key];
+				[result setObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:context] forKey:key];
 			}
 			[self setValue:[NSDictionary dictionaryWithDictionary:result] forKey:propertyName];
 		} else if ([propertyType hasPrefix:@"@"]) {
 			// an object besides of string, array or dictionary (NSKeyedArchiver used to encode)
-			[self setValue:[CustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
+			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
 		} else if ([propertyType hasPrefix:@"{"]) {
 			// here we have to handle structs, we currently can only do those that have NSValue support
-			[self setValue:[CustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
+			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
 		} else {
 			Log(@"Could not decode type %@, so will not try to", propertyType);
 		}
@@ -379,7 +379,7 @@
 	return properties;
 }
 
-+ (void)removeObjectFromAssociatedSubTables:(NSInteger)identifier context:(PersistenceContext *)context {
++ (void)removeObjectFromAssociatedSubTables:(NSInteger)identifier context:(DSTPersistenceContext *)context {
 	NSDictionary *properties = [[self class] fetchAllProperties];
 	
 	// remove all objects for this from subtables
@@ -405,7 +405,7 @@
 
 #pragma mark - Shared API
 
-+ (void)deleteObjectFromContext:(PersistenceContext *)context identifier:(NSInteger)identifier {
++ (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier {
 	[[self class] removeObjectFromAssociatedSubTables:identifier context:context];
 	[context deleteFromTable:[self tableName] pkid:identifier];
 }

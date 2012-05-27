@@ -8,5 +8,5 @@
 
 // TODO: Write documentation
 
-#import "PersistenceContext.h"
-#import "PersistentObject.h"
+#import "DSTPersistenceContext.h"
+#import "DSTPersistentObject.h"

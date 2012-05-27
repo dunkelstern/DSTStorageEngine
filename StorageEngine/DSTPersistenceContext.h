@@ -8,10 +8,10 @@
 
 #import <Foundation/Foundation.h>
 
-@class PersistentObject;
-@interface PersistenceContext : NSObject
+@class DSTPersistentObject;
+@interface DSTPersistenceContext : NSObject
 
-- (PersistenceContext *)initWithDatabase:(NSString *)dbName;
+- (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName;
 - (NSArray *)registeredObjects;
 + (void)removeOnDiskRepresentationForDatabase:(NSString *)dbName;
 @end

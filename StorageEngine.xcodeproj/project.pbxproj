@@ -17,9 +17,9 @@
 		422B52931569386900F01751 /* DSTViewController_iPhone.xib in Resources */ = {isa = PBXBuildFile; fileRef = 422B52911569386900F01751 /* DSTViewController_iPhone.xib */; };
 		422B52961569386900F01751 /* DSTViewController_iPad.xib in Resources */ = {isa = PBXBuildFile; fileRef = 422B52941569386900F01751 /* DSTViewController_iPad.xib */; };
 		422B529D1569388600F01751 /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 422B529C1569388600F01751 /* libsqlite3.dylib */; };
-		422B52A715693FB700F01751 /* CustomArchiver.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52A01569392900F01751 /* CustomArchiver.m */; };
-		422B52A815693FB700F01751 /* PersistenceContext.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52A21569392900F01751 /* PersistenceContext.m */; };
-		422B52A915693FB700F01751 /* PersistentObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52A41569392900F01751 /* PersistentObject.m */; };
+		422B52A715693FB700F01751 /* DSTCustomArchiver.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52A01569392900F01751 /* DSTCustomArchiver.m */; };
+		422B52A815693FB700F01751 /* DSTPersistenceContext.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52A21569392900F01751 /* DSTPersistenceContext.m */; };
+		422B52A915693FB700F01751 /* DSTPersistentObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52A41569392900F01751 /* DSTPersistentObject.m */; };
 		422B52AC15694F3F00F01751 /* DSTTestObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52AB15694F3F00F01751 /* DSTTestObject.m */; };
 /* End PBXBuildFile section */
 
@@ -39,14 +39,14 @@
 		422B52921569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/DSTViewController_iPhone.xib; sourceTree = "<group>"; };
 		422B52951569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/DSTViewController_iPad.xib; sourceTree = "<group>"; };
 		422B529C1569388600F01751 /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
-		422B529F1569392900F01751 /* CustomArchiver.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = CustomArchiver.h; path = StorageEngine/CustomArchiver.h; sourceTree = "<group>"; };
-		422B52A01569392900F01751 /* CustomArchiver.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = CustomArchiver.m; path = StorageEngine/CustomArchiver.m; sourceTree = "<group>"; };
-		422B52A11569392900F01751 /* PersistenceContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PersistenceContext.h; path = StorageEngine/PersistenceContext.h; sourceTree = "<group>"; };
-		422B52A21569392900F01751 /* PersistenceContext.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PersistenceContext.m; path = StorageEngine/PersistenceContext.m; sourceTree = "<group>"; };
-		422B52A31569392900F01751 /* PersistentObject.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PersistentObject.h; path = StorageEngine/PersistentObject.h; sourceTree = "<group>"; };
-		422B52A41569392900F01751 /* PersistentObject.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PersistentObject.m; path = StorageEngine/PersistentObject.m; sourceTree = "<group>"; };
-		422B52A515693A3D00F01751 /* StorageEngine_Internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StorageEngine_Internal.h; path = StorageEngine/StorageEngine_Internal.h; sourceTree = "<group>"; };
-		422B52A615693E8A00F01751 /* StorageEngine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = StorageEngine.h; path = StorageEngine/StorageEngine.h; sourceTree = "<group>"; };
+		422B529F1569392900F01751 /* DSTCustomArchiver.h */ = {isa = PBXFileReference; name = DSTCustomArchiver.h; path = StorageEngine/DSTCustomArchiver.h; sourceTree = "<group>"; };
+		422B52A01569392900F01751 /* DSTCustomArchiver.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = DSTCustomArchiver.m; path = StorageEngine/DSTCustomArchiver.m; sourceTree = "<group>"; };
+		422B52A11569392900F01751 /* DSTPersistenceContext.h */ = {isa = PBXFileReference; name = DSTPersistenceContext.h; path = StorageEngine/DSTPersistenceContext.h; sourceTree = "<group>"; };
+		422B52A21569392900F01751 /* DSTPersistenceContext.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = DSTPersistenceContext.m; path = StorageEngine/DSTPersistenceContext.m; sourceTree = "<group>"; };
+		422B52A31569392900F01751 /* DSTPersistentObject.h */ = {isa = PBXFileReference; name = DSTPersistentObject.h; path = StorageEngine/DSTPersistentObject.h; sourceTree = "<group>"; };
+		422B52A41569392900F01751 /* DSTPersistentObject.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = DSTPersistentObject.m; path = StorageEngine/DSTPersistentObject.m; sourceTree = "<group>"; };
+		422B52A515693A3D00F01751 /* DSTStorageEngine_Internal.h */ = {isa = PBXFileReference; name = DSTStorageEngine_Internal.h; path = StorageEngine/DSTStorageEngine_Internal.h; sourceTree = "<group>"; };
+		422B52A615693E8A00F01751 /* DSTStorageEngine.h */ = {isa = PBXFileReference; name = DSTStorageEngine.h; path = StorageEngine/DSTStorageEngine.h; sourceTree = "<group>"; };
 		422B52AA15694F3F00F01751 /* DSTTestObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DSTTestObject.h; sourceTree = "<group>"; };
 		422B52AB15694F3F00F01751 /* DSTTestObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DSTTestObject.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -126,14 +126,14 @@
 		422B529E156938C200F01751 /* Storage Engine */ = {
 			isa = PBXGroup;
 			children = (
-				422B529F1569392900F01751 /* CustomArchiver.h */,
-				422B52A01569392900F01751 /* CustomArchiver.m */,
-				422B52A11569392900F01751 /* PersistenceContext.h */,
-				422B52A21569392900F01751 /* PersistenceContext.m */,
-				422B52A31569392900F01751 /* PersistentObject.h */,
-				422B52A41569392900F01751 /* PersistentObject.m */,
-				422B52A515693A3D00F01751 /* StorageEngine_Internal.h */,
-				422B52A615693E8A00F01751 /* StorageEngine.h */,
+				422B529F1569392900F01751 /* DSTCustomArchiver.h */,
+				422B52A01569392900F01751 /* DSTCustomArchiver.m */,
+				422B52A11569392900F01751 /* DSTPersistenceContext.h */,
+				422B52A21569392900F01751 /* DSTPersistenceContext.m */,
+				422B52A31569392900F01751 /* DSTPersistentObject.h */,
+				422B52A41569392900F01751 /* DSTPersistentObject.m */,
+				422B52A515693A3D00F01751 /* DSTStorageEngine_Internal.h */,
+				422B52A615693E8A00F01751 /* DSTStorageEngine.h */,
 			);
 			name = "Storage Engine";
 			sourceTree = "<group>";
@@ -202,9 +202,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				422B52A715693FB700F01751 /* CustomArchiver.m in Sources */,
-				422B52A815693FB700F01751 /* PersistenceContext.m in Sources */,
-				422B52A915693FB700F01751 /* PersistentObject.m in Sources */,
+				422B52A715693FB700F01751 /* DSTCustomArchiver.m in Sources */,
+				422B52A815693FB700F01751 /* DSTPersistenceContext.m in Sources */,
+				422B52A915693FB700F01751 /* DSTPersistentObject.m in Sources */,
 				422B52891569386900F01751 /* main.m in Sources */,
 				422B528D1569386900F01751 /* DSTAppDelegate.m in Sources */,
 				422B52901569386900F01751 /* DSTViewController.m in Sources */,
@@ -330,6 +330,7 @@
 				422B529B1569386900F01751 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

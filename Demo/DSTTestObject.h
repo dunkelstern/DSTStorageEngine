@@ -6,9 +6,9 @@
 //  Copyright (c) 2012 Johannes Schriewer. All rights reserved.
 //
 
-#import "PersistentObject.h"
+#import "DSTPersistentObject.h"
 
-@interface DSTTestObject : PersistentObject <PersistentObjectSubclass>
+@interface DSTTestObject : DSTPersistentObject <PersistentObjectSubclass>
 
 @property (nonatomic, assign) CGFloat aFloat;
 @property (nonatomic, assign) CGSize aSize;

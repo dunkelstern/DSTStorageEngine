@@ -6,14 +6,14 @@
 //  Copyright (c) 2012 Johannes Schriewer. All rights reserved.
 //
 
-#import "PersistenceContext.h"
+#import "DSTPersistenceContext.h"
 
 // Class extensions are in this file
-#import "StorageEngine_Internal.h"
+#import "DSTStorageEngine_Internal.h"
 
-@implementation PersistenceContext
+@implementation DSTPersistenceContext
 
-- (PersistenceContext *)initWithDatabase:(NSString *)dbName {
+- (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName {
     self = [super init];
     if (self) {
         registeredObjects = [[NSMutableArray alloc] init];
@@ -335,11 +335,11 @@
 	return [NSArray arrayWithArray:data];	
 }
 
-- (void)registerObject:(PersistentObject *)object {
+- (void)registerObject:(DSTPersistentObject *)object {
     [registeredObjects addObject:object];
 }
 
-- (void)deRegisterObject:(PersistentObject *)object {
+- (void)deRegisterObject:(DSTPersistentObject *)object {
     [registeredObjects removeObject:object];
 }
 

@@ -20,13 +20,13 @@
 	#define Log(_msg, ...) NSLog(LogEntry(_msg), __VA_ARGS__)
 #endif
 
-@interface PersistenceContext () {
+@interface DSTPersistenceContext () {
     NSMutableArray *registeredObjects;
 	NSMutableArray *tables;
 	sqlite3 *dbHandle;
 }
-- (void)registerObject:(PersistentObject *)object;
-- (void)deRegisterObject:(PersistentObject *)object;
+- (void)registerObject:(DSTPersistentObject *)object;
+- (void)deRegisterObject:(DSTPersistentObject *)object;
 
 - (BOOL)tableExists:(NSString *)name;
 - (BOOL)createTable:(NSString *)name columns:(NSDictionary *)columns version:(NSUInteger)version;

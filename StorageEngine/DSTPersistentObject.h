@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "PersistenceContext.h"
+#import "DSTPersistenceContext.h"
 
 @protocol PersistentObjectSubclass <NSObject, NSCoding>
 - (void)setDefaults;
@@ -17,14 +17,14 @@
 - (void)didLoadFromContext;
 @end
 
-@interface PersistentObject : NSObject <NSCoding, PersistentObjectSubclass> {
-    __strong PersistenceContext *context;
+@interface DSTPersistentObject : NSObject <NSCoding, PersistentObjectSubclass> {
+    __strong DSTPersistenceContext *context;
 }
 
-+ (void)deleteObjectFromContext:(PersistenceContext *)context identifier:(NSInteger)identifier;
++ (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier;
 
-- (PersistentObject *)initWithContext:(PersistenceContext *)context;
-- (PersistentObject *)initWithIdentifier:(NSInteger)identifier fromContext:(PersistenceContext *)context;
+- (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)context;
+- (DSTPersistentObject *)initWithIdentifier:(NSInteger)identifier fromContext:(DSTPersistenceContext *)context;
 - (NSInteger)save; // returns new ID if saved first or current ID if updated
 
 @property (nonatomic, readonly) NSInteger identifier;
