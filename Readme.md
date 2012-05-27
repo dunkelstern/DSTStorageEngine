@@ -10,17 +10,18 @@ Simple Objective-C storage backend based on SQLite 3. Concepts borrowed heavily 
 
 ## How to use
 
-1. Import the header file
+1. Add all files from the `StorageEngine` subfolder to your project
+2. Import the header file
 
         #import "DSTStorageEngine.h"
 
-2. Link your binary against `libsqlite3.dylib` (works like every other framework)
-3. Create a context (named `test.sqlite` in your documents directory)
+3. Link your binary against `libsqlite3.dylib` (works like every other framework)
+4. Create a context (named `test.sqlite` in your documents directory)
 
     	PersistenceContext *persist = [[PersistenceContext alloc]
     	                                initWithDatabase:@"test.sqlite"];
 
-4. Create a `DSTPersistenceObject` subclass to contain your model object:
+5. Create a `DSTPersistenceObject` subclass to contain your model object:
 
         #import "DSTPersistentObject.h"
 
@@ -58,12 +59,12 @@ Simple Objective-C storage backend based on SQLite 3. Concepts borrowed heavily 
         
         @end
 
-5. Instanciate your object:
+6. Instanciate your object:
 
         TestObject *obj = [[TestObject alloc] initWithContext:persist];
         [obj setDefaults];
 
-6. Save your object (the save function returns the identifier, but you may access it by calling `[obj identifier]` later too):
+7. Save your object (the save function returns the identifier, but you may access it by calling `[obj identifier]` later too):
 
         NSInteger identifier = [obj save];
         
@@ -71,17 +72,17 @@ Simple Objective-C storage backend based on SQLite 3. Concepts borrowed heavily 
     
         [[persist registeredObjects] makeObjectsPerformSelector:@selector(save)];
         
-7. Your object is stored on disk, all database tables and files will be created automatically, your schema definition is your property layout of your class (there are some limitations but read on).
+8. Your object is stored on disk, all database tables and files will be created automatically, your schema definition is your property layout of your class (there are some limitations but read on).
 
-8. Fetch an object by its identifier:
+9. Fetch an object by its identifier:
 
         TestObject *o = [[TestObject alloc] initWithIdentifier:0 fromContext:persist];
 
-9. Delete an object from a context:
+10. Delete an object from a context:
 
         [TestObject deleteObjectFromContext:persist identifier:0];
 
-10. Delete the complete context:
+11. Delete the complete context:
 
         [DSTPersistenceContext removeOnDiskRepresentationForDatabase:@"test.sqlite"];
 
@@ -98,7 +99,7 @@ Simple Objective-C storage backend based on SQLite 3. Concepts borrowed heavily 
 ## Todo
 
 * Automatically register DSTPersistentObject Objects that are properties of another DSTPersistentObject
-* Allow cascaded deleting of complete DSTPersistenObject trees
+* Allow cascaded deleting of complete DSTPersistentObject trees
 * Implement fault objects to allow loading only the part of the tree hierarchy that is accessed
 * Recursive saving of object trees
 * Detect referencing cycles and bail out if found instead of looping endlessly
