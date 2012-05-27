@@ -1,0 +1,431 @@
+//
+//  PersistenceContext.m
+//  StorageEngine
+//
+//  Created by Johannes Schriewer on 16.05.2012.
+//  Copyright (c) 2012 Johannes Schriewer. All rights reserved.
+//
+
+#import "PersistenceContext.h"
+
+// Class extensions are in this file
+#import "StorageEngine_Internal.h"
+
+@implementation PersistenceContext
+
+- (PersistenceContext *)initWithDatabase:(NSString *)dbName {
+    self = [super init];
+    if (self) {
+        registeredObjects = [[NSMutableArray alloc] init];
+		dbHandle = NULL;
+		
+		NSString *databaseFile = [[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] objectAtIndex:0] URLByAppendingPathComponent:dbName] absoluteString];
+		int result = sqlite3_open([databaseFile UTF8String], &dbHandle);
+		if (result) {
+			FailLog(@"Could not open database: %s", sqlite3_errmsg(dbHandle));
+			sqlite3_close(dbHandle);
+			dbHandle = NULL;
+			return nil;
+		}
+		
+		char *errmsg = NULL;
+		if (sqlite3_exec(dbHandle, "PRAGMA encoding = \"UTF-8\"",  NULL, NULL, &errmsg) != SQLITE_OK) {
+			FailLog(@"Could not set encoding to UTF-8: %s", errmsg);
+			sqlite3_free(errmsg);
+			sqlite3_close(dbHandle);
+			dbHandle = NULL;
+			return nil;
+		}
+		
+		if (sqlite3_exec(dbHandle, "PRAGMA auto_vacuum=1",  NULL, NULL, &errmsg) != SQLITE_OK) {
+			FailLog(@"Could not set auto vaccum: %s", errmsg);
+			sqlite3_free(errmsg);
+			sqlite3_close(dbHandle);
+			dbHandle = NULL;
+			return nil;
+		}
+		
+		tables = [[NSMutableArray alloc] initWithCapacity:1];
+		[self fetchTables];
+
+		if (![self tableExists:@"storageengine_versions"]) {
+			if (sqlite3_exec(dbHandle, "CREATE TABLE storageengine_versions ( tablename TEXT, version INTEGER, pkindex INTEGER )",  NULL, NULL, &errmsg) != SQLITE_OK) {
+				FailLog(@"Could not create versioning table: %s", errmsg);
+				sqlite3_free(errmsg);
+				sqlite3_close(dbHandle);
+				return nil;
+			}
+			[self fetchTables];
+		}		
+    }
+    return self;
+}
+
+- (void)dealloc {
+	if (dbHandle) {
+		sqlite3_close(dbHandle);
+	}
+}
+
+#pragma mark - API
+- (NSArray *)registeredObjects {
+    return [NSArray arrayWithArray:registeredObjects];
+}
+
++ (void)removeOnDiskRepresentationForDatabase:(NSString *)dbName {
+	NSFileManager *fm = [NSFileManager defaultManager];
+	NSURL *databaseFile = [[[fm URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] objectAtIndex:0] URLByAppendingPathComponent:dbName];
+	NSError *error = nil;
+	[fm removeItemAtURL:databaseFile error:&error];
+	if (error) {
+		Log(@"Could not remove database file: %@", error);
+	}
+}
+
+#pragma mark - Internal API
+- (BOOL)tableExists:(NSString *)name {
+	NSString *lowerCaseName = [name lowercaseString];
+	for (NSString *tableName in tables) {
+		if ([tableName isEqualToString:lowerCaseName]) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+- (BOOL)createTable:(NSString *)name columns:(NSDictionary *)columns version:(NSUInteger)version {
+	if ([self tableExists:name]) {
+		FailLog(@"Table exists already");
+		return NO;
+	}
+	
+	NSMutableString *query = [[NSMutableString alloc] init];
+	
+	// build query
+	[query appendFormat:@"CREATE TABLE %@ ( id INTEGER PRIMARY KEY, ", [name lowercaseString]];
+	for (NSString *columnName in [columns allKeys]) {
+		Class type = [columns objectForKey:columnName];
+		[query appendFormat:@"%@ %@,", [columnName lowercaseString], type];
+	}
+	[query deleteCharactersInRange:NSMakeRange([query length]-1, 1)];
+	[query appendFormat:@");"];
+	
+	// execute query
+	char *errmsg = NULL;
+	if (sqlite3_exec(dbHandle, [query UTF8String],  NULL, NULL, &errmsg) != SQLITE_OK) {
+		FailLog(@"Could not create table: %s", errmsg);
+		sqlite3_free(errmsg);
+		return NO;
+	}
+	
+	// insert into version table
+	NSString *versionQuery = [NSString stringWithFormat:@"INSERT INTO storageengine_versions ( tablename, version, pkindex ) VALUES ( \"%@\", %d, 0 )", [name lowercaseString], version];
+	if (sqlite3_exec(dbHandle, [versionQuery UTF8String],  NULL, NULL, &errmsg) != SQLITE_OK) {
+		FailLog(@"Could insert version string: %s", errmsg);
+		sqlite3_free(errmsg);
+		sqlite3_exec(dbHandle, [[NSString stringWithFormat:@"DROP TABLE %@", name] UTF8String], NULL, NULL, &errmsg);
+		return NO;
+	}
+	
+	[self fetchTables];
+	return YES;
+}
+
+- (NSUInteger)insertObjectInto:(NSString *)name values:(NSDictionary *)values {	
+	sqlite3_stmt *stmt = NULL;
+	
+	// fetch new pkid
+	NSUInteger pkid = 0;
+	char *sql = "SELECT pkindex FROM storageengine_versions WHERE tablename = :table";
+	DebugLog(@"Query: %s", sql);
+	if (sqlite3_prepare_v2(dbHandle, sql, strlen(sql), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could prepare pkindex statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return NSUIntegerMax;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, ":table");
+	sqlite3_bind_text(stmt, parameterIndex, [[name lowercaseString] UTF8String], strlen([[name lowercaseString] UTF8String]), SQLITE_TRANSIENT);
+	if (sqlite3_step(stmt) != SQLITE_ROW) {
+		Log(@"Could execute pkindex statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return NSUIntegerMax;		
+	}
+	pkid = sqlite3_column_int(stmt, 0);
+	sqlite3_finalize(stmt);
+	
+	// update pkid counter
+	sql = "UPDATE storageengine_versions SET pkindex = :pkindex WHERE tablename = :table";
+	DebugLog(@"Query: %s", sql);
+	if (sqlite3_prepare_v2(dbHandle, sql, strlen(sql), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could prepare pkindex update statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return NSUIntegerMax;
+	}
+	parameterIndex = sqlite3_bind_parameter_index(stmt, ":pkindex");
+	sqlite3_bind_int(stmt, parameterIndex, pkid+1);
+	parameterIndex = sqlite3_bind_parameter_index(stmt, ":table");
+	sqlite3_bind_text(stmt, parameterIndex, [[name lowercaseString] UTF8String], strlen([[name lowercaseString] UTF8String]), SQLITE_TRANSIENT);
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		Log(@"Could execute pkindex update statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return NSUIntegerMax;		
+	}
+	sqlite3_finalize(stmt);
+	
+	// build insert query
+	NSMutableString *query = [[NSMutableString alloc] init];
+	[query appendFormat:@"INSERT INTO %@ ( id, ", [name lowercaseString]];
+	for(NSString *key in values) {
+		[query appendFormat:@"%@,", [key lowercaseString]];
+	}
+	[query deleteCharactersInRange:NSMakeRange([query length]-1, 1)];
+	[query appendFormat:@" ) VALUES ( %d,", pkid];
+	for(NSString *key in values) {
+		[query appendFormat:@":%@,", [key lowercaseString]];
+	}
+	[query deleteCharactersInRange:NSMakeRange([query length]-1, 1)];
+	[query appendFormat:@" );"];
+	
+	// execute
+	DebugLog(@"Query: %@", query);
+	if (sqlite3_prepare_v2(dbHandle, [query UTF8String], strlen([query UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare insert statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return NSUIntegerMax;
+	}
+	[self fillStatement:stmt values:values];
+	
+	int result = sqlite3_step(stmt);
+	if (result != SQLITE_DONE) {
+		Log(@"Could not execute insert statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return NSUIntegerMax;
+	}
+	sqlite3_finalize(stmt);
+	
+	return pkid;
+}
+
+- (void)deleteFromTable:(NSString *)name pkid:(NSUInteger)pkid {
+	sqlite3_stmt *stmt = NULL;
+
+	// prepare statement
+	NSString *sql = [NSString stringWithFormat:@"DELETE FROM %@ WHERE id = :pkindex", [name lowercaseString]];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could delete statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, ":pkindex");
+	sqlite3_bind_int(stmt, parameterIndex, pkid);
+
+	// execute statement
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		Log(@"Could execute delete statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	sqlite3_finalize(stmt);
+}
+
+- (void)deleteFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number {
+	sqlite3_stmt *stmt = NULL;
+	NSString *fieldPlaceholder = [NSString stringWithFormat:@":%@", [fieldName lowercaseString]];
+	
+	// prepare statement
+	NSString *sql = [NSString stringWithFormat:@"DELETE FROM %@ WHERE %@ = %@", [name lowercaseString], [fieldName lowercaseString], fieldPlaceholder];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could delete statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, [fieldPlaceholder UTF8String]);
+	sqlite3_bind_int(stmt, parameterIndex, number);
+	
+	// execute statement
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		Log(@"Could execute delete statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	sqlite3_finalize(stmt);	
+}
+
+- (void)updateTable:(NSString *)name pkid:(NSUInteger)pkid values:(NSDictionary *)values {
+	NSMutableString *query = [[NSMutableString alloc] init];
+	[query appendFormat:@"UPDATE %@ SET ", [name lowercaseString]];
+	for(NSString *key in values) {
+		[query appendFormat:@"%@ = :%@,", [key lowercaseString], [key lowercaseString]];
+	}
+	[query deleteCharactersInRange:NSMakeRange([query length]-1, 1)];
+	[query appendFormat:@" WHERE id = %d;", pkid];
+	
+	DebugLog(@"Query: %@", query);
+	sqlite3_stmt *stmt = NULL;
+	if (sqlite3_prepare_v2(dbHandle, [query UTF8String], strlen([query UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare update statement: %s", sqlite3_errmsg(dbHandle));
+		return;
+	}
+	[self fillStatement:stmt values:values];
+	
+	int result = sqlite3_step(stmt);
+	if (result != SQLITE_DONE) {
+		Log(@"Could not execute update statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	sqlite3_finalize(stmt);
+}
+
+
+- (NSDictionary *)fetchFromTable:(NSString *)name pkid:(NSUInteger)pkid {
+	sqlite3_stmt *stmt = NULL;
+
+	// fetch from table
+	NSString *sql = [NSString stringWithFormat:@"SELECT * FROM %@ WHERE id = :pkid", [name lowercaseString]];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, ":pkid");
+	sqlite3_bind_int(stmt, parameterIndex, pkid);
+	if (sqlite3_step(stmt) != SQLITE_ROW) {
+		Log(@"Could not execute fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+	}
+	
+	NSDictionary *result = [self convertResultToDictionary:stmt];
+	sqlite3_finalize(stmt);
+	return result;
+}
+
+- (NSArray *)fetchFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number {
+	sqlite3_stmt *stmt = NULL;
+	NSString *fieldPlaceholder = [NSString stringWithFormat:@":%@", [fieldName lowercaseString]];
+
+	// fetch from table
+	NSString *sql = [NSString stringWithFormat:@"SELECT * FROM %@ WHERE %@ = %@", [name lowercaseString], [fieldName lowercaseString], fieldPlaceholder];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, [fieldPlaceholder UTF8String]);
+	sqlite3_bind_int(stmt, parameterIndex, number);
+	
+	NSMutableArray *data = [[NSMutableArray alloc] init];
+	int sqlResult = SQLITE_OK;
+	while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
+		[data addObject:[self convertResultToDictionary:stmt]];
+	}
+	
+	if (sqlResult != SQLITE_DONE) {
+		Log(@"Could not execute fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+	}
+	
+	sqlite3_finalize(stmt);
+	return [NSArray arrayWithArray:data];	
+}
+
+- (void)registerObject:(PersistentObject *)object {
+    [registeredObjects addObject:object];
+}
+
+- (void)deRegisterObject:(PersistentObject *)object {
+    [registeredObjects removeObject:object];
+}
+
+#pragma mark - Private API
+- (void)fetchTables {
+	sqlite3_stmt *stmt = NULL;
+	
+	[tables removeAllObjects];
+	
+	// fetch table list
+	char *sql = "SELECT name FROM SQLITE_MASTER WHERE type = 'table'";
+	DebugLog(@"Query: %s", sql);
+	if (sqlite3_prepare_v2(dbHandle, sql, strlen(sql), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could prepare fetchTables statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+
+	int sqlResult = SQLITE_OK;
+	while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
+		[tables addObject:[NSString stringWithUTF8String:(const char *)sqlite3_column_text(stmt, 0)]];
+	}
+	
+	if (sqlResult != SQLITE_DONE) {
+		Log(@"Could execute fetchTables statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;		
+	}
+	sqlite3_finalize(stmt);
+}
+
+- (void)fillStatement:(sqlite3_stmt *)stmt values:(NSDictionary *)values {
+	for(NSString *key in values) {
+		id value = [values objectForKey:key];
+		NSString *placeholder = [NSString stringWithFormat:@":%@", [key lowercaseString]];
+		int parameterIndex = sqlite3_bind_parameter_index(stmt, [placeholder UTF8String]);
+		int result = 0;
+		
+		if ([value isKindOfClass:[NSString class]]) {
+			result = sqlite3_bind_text(stmt, parameterIndex, [value UTF8String], strlen([value UTF8String]), SQLITE_TRANSIENT);
+		} else if ([value isKindOfClass:[NSNumber class]]) {
+			result = sqlite3_bind_double(stmt, parameterIndex, [value doubleValue]);
+		} else if ([value isKindOfClass:[NSData class]]) {
+			result = sqlite3_bind_blob(stmt, parameterIndex, [value bytes], [value length], SQLITE_TRANSIENT);
+		} else if ([value isKindOfClass:[NSValue class]]) {
+			NSData *data = [NSKeyedArchiver archivedDataWithRootObject:value];
+			result = sqlite3_bind_blob(stmt, parameterIndex, [data bytes], [data length], SQLITE_TRANSIENT);
+		} else {
+			FailLog(@"Could not determine data type for %@", key);
+		}
+		
+		if (result != SQLITE_OK) {
+			Log(@"binding of %@ (index: %d) failed: %s", key, parameterIndex, sqlite3_errmsg(dbHandle));
+		}
+	}
+}
+
+- (NSDictionary *)convertResultToDictionary:(sqlite3_stmt *)stmt {
+	NSMutableDictionary	*data = [[NSMutableDictionary alloc] initWithCapacity:sqlite3_column_count(stmt)];
+	for (int i = 0; i < sqlite3_column_count(stmt); i++) {
+		NSString *key = [NSString stringWithUTF8String:sqlite3_column_name(stmt, i)];
+		id obj;
+		
+		switch (sqlite3_column_type(stmt, i)) {
+			case SQLITE_INTEGER:
+				obj = [NSNumber numberWithInt:sqlite3_column_int(stmt,i)];
+				break;
+			case SQLITE_FLOAT:
+				obj = [NSNumber numberWithDouble:sqlite3_column_double(stmt,i)];
+				break;
+			case SQLITE_BLOB:
+				obj = [NSData dataWithBytes:sqlite3_column_blob(stmt, i) length:sqlite3_column_bytes(stmt, i)];
+				break;
+			case SQLITE_NULL:
+				obj = [NSNull null];
+				break;
+			case SQLITE_TEXT:
+				obj = [NSString stringWithUTF8String:(const char *)sqlite3_column_text(stmt, i)];
+				break;
+			default:
+				Log(@"Unknown column type %d", sqlite3_column_type(stmt, i));
+				obj = [NSNull null];
+				break;
+		}
+		[data setObject:obj forKey:key];
+	}
+	return [NSDictionary dictionaryWithDictionary:data];
+}
+@end
