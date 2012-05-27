@@ -3,7 +3,7 @@
 //  StorageEngine
 //
 //  Created by Johannes Schriewer on 2012-05-20.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
+//  Copyright (c) 2012 Johannes Schriewer. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>

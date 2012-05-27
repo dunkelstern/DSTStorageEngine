@@ -3,7 +3,7 @@
 //  StorageEngine
 //
 //  Created by Johannes Schriewer on 2012-05-20.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
+//  Copyright (c) 2012 Johannes Schriewer. All rights reserved.
 //
 
 #import "DSTAppDelegate.h"
@@ -24,6 +24,7 @@
 	} else {
 	    self.viewController = [[DSTViewController alloc] initWithNibName:@"DSTViewController_iPad" bundle:nil];
 	}
+
 	self.window.rootViewController = self.viewController;
     [self.window makeKeyAndVisible];
     return YES;

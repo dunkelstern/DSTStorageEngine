@@ -16,6 +16,8 @@
 		422B52901569386900F01751 /* DSTViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B528F1569386900F01751 /* DSTViewController.m */; };
 		422B52931569386900F01751 /* DSTViewController_iPhone.xib in Resources */ = {isa = PBXBuildFile; fileRef = 422B52911569386900F01751 /* DSTViewController_iPhone.xib */; };
 		422B52961569386900F01751 /* DSTViewController_iPad.xib in Resources */ = {isa = PBXBuildFile; fileRef = 422B52941569386900F01751 /* DSTViewController_iPad.xib */; };
+		422B529D1569388600F01751 /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 422B529C1569388600F01751 /* libsqlite3.dylib */; };
+		422B52AC15694F3F00F01751 /* DSTTestObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 422B52AB15694F3F00F01751 /* DSTTestObject.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,16 +25,19 @@
 		422B527C1569386900F01751 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		422B527E1569386900F01751 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		422B52801569386900F01751 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
-		422B52841569386900F01751 /* StorageEngine-Info.plist */ = {isa = PBXFileReference; path = "StorageEngine-Info.plist"; sourceTree = "<group>"; };
+		422B52841569386900F01751 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		422B52861569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		422B52881569386900F01751 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		422B528A1569386900F01751 /* StorageEngine-Prefix.pch */ = {isa = PBXFileReference; path = "StorageEngine-Prefix.pch"; sourceTree = "<group>"; };
-		422B528B1569386900F01751 /* DSTAppDelegate.h */ = {isa = PBXFileReference; path = DSTAppDelegate.h; sourceTree = "<group>"; };
+		422B528A1569386900F01751 /* Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Prefix.pch; sourceTree = "<group>"; };
+		422B528B1569386900F01751 /* DSTAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DSTAppDelegate.h; sourceTree = "<group>"; };
 		422B528C1569386900F01751 /* DSTAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DSTAppDelegate.m; sourceTree = "<group>"; };
-		422B528E1569386900F01751 /* DSTViewController.h */ = {isa = PBXFileReference; path = DSTViewController.h; sourceTree = "<group>"; };
+		422B528E1569386900F01751 /* DSTViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DSTViewController.h; sourceTree = "<group>"; };
 		422B528F1569386900F01751 /* DSTViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DSTViewController.m; sourceTree = "<group>"; };
 		422B52921569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/DSTViewController_iPhone.xib; sourceTree = "<group>"; };
 		422B52951569386900F01751 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/DSTViewController_iPad.xib; sourceTree = "<group>"; };
+		422B529C1569388600F01751 /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
+		422B52AA15694F3F00F01751 /* DSTTestObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DSTTestObject.h; sourceTree = "<group>"; };
+		422B52AB15694F3F00F01751 /* DSTTestObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DSTTestObject.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -40,6 +45,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				422B529D1569388600F01751 /* libsqlite3.dylib in Frameworks */,
 				422B527D1569386900F01751 /* UIKit.framework in Frameworks */,
 				422B527F1569386900F01751 /* Foundation.framework in Frameworks */,
 				422B52811569386900F01751 /* CoreGraphics.framework in Frameworks */,
@@ -52,7 +58,7 @@
 		422B526D1569386900F01751 = {
 			isa = PBXGroup;
 			children = (
-				422B52821569386900F01751 /* StorageEngine */,
+				422B52821569386900F01751 /* Demo Project */,
 				422B527B1569386900F01751 /* Frameworks */,
 				422B52791569386900F01751 /* Products */,
 			);
@@ -69,6 +75,7 @@
 		422B527B1569386900F01751 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				422B529C1569388600F01751 /* libsqlite3.dylib */,
 				422B527C1569386900F01751 /* UIKit.framework */,
 				422B527E1569386900F01751 /* Foundation.framework */,
 				422B52801569386900F01751 /* CoreGraphics.framework */,
@@ -76,7 +83,7 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		422B52821569386900F01751 /* StorageEngine */ = {
+		422B52821569386900F01751 /* Demo Project */ = {
 			isa = PBXGroup;
 			children = (
 				422B528B1569386900F01751 /* DSTAppDelegate.h */,
@@ -86,17 +93,20 @@
 				422B52911569386900F01751 /* DSTViewController_iPhone.xib */,
 				422B52941569386900F01751 /* DSTViewController_iPad.xib */,
 				422B52831569386900F01751 /* Supporting Files */,
+				422B52AA15694F3F00F01751 /* DSTTestObject.h */,
+				422B52AB15694F3F00F01751 /* DSTTestObject.m */,
 			);
-			path = StorageEngine;
+			name = "Demo Project";
+			path = Demo;
 			sourceTree = "<group>";
 		};
 		422B52831569386900F01751 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
-				422B52841569386900F01751 /* StorageEngine-Info.plist */,
+				422B52841569386900F01751 /* Info.plist */,
 				422B52851569386900F01751 /* InfoPlist.strings */,
 				422B52881569386900F01751 /* main.m */,
-				422B528A1569386900F01751 /* StorageEngine-Prefix.pch */,
+				422B528A1569386900F01751 /* Prefix.pch */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -168,6 +178,7 @@
 				422B52891569386900F01751 /* main.m in Sources */,
 				422B528D1569386900F01751 /* DSTAppDelegate.m in Sources */,
 				422B52901569386900F01751 /* DSTViewController.m in Sources */,
+				422B52AC15694F3F00F01751 /* DSTTestObject.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -252,8 +263,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "StorageEngine/StorageEngine-Prefix.pch";
-				INFOPLIST_FILE = "StorageEngine/StorageEngine-Info.plist";
+				GCC_PREFIX_HEADER = Demo/Prefix.pch;
+				INFOPLIST_FILE = Demo/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -263,8 +274,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "StorageEngine/StorageEngine-Prefix.pch";
-				INFOPLIST_FILE = "StorageEngine/StorageEngine-Info.plist";
+				GCC_PREFIX_HEADER = Demo/Prefix.pch;
+				INFOPLIST_FILE = Demo/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
