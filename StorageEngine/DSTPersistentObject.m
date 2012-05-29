@@ -278,12 +278,16 @@
 			// some form of integer
 			[self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
 		} else if (([propertyType hasPrefix:@"@\"NSString"]) || ([propertyType hasPrefix:@"@\"NSMutableString"])) {
-			// some form of string
+			// string
 			if ([data objectForKey:[propertyName lowercaseString]]) {
 				if ([[data objectForKey:[propertyName lowercaseString]] isKindOfClass:[NSNull class]]) {
 					[self setValue:nil forKey:propertyName];
 				} else {
-					[self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
+                    if ([propertyType hasPrefix:@"@\"NSMutable"]) {
+                        [self setValue:[[data objectForKey:[propertyName lowercaseString]] mutableCopy] forKey:propertyName];
+                    } else {
+                        [self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
+                    }
 				}
 			}
 		} else if (([propertyType hasPrefix:@"@\"NSArray"]) || ([propertyType hasPrefix:@"@\"NSMutableArray"])) {
@@ -299,7 +303,11 @@
 				NSData *content = [data objectForKey:@"data"];
 				[result addObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:context]];
 			}
-			[self setValue:[NSArray arrayWithArray:result] forKey:propertyName];
+            if ([propertyType hasPrefix:@"@\"NSMutable"]) {
+                [self setValue:[NSMutableArray arrayWithArray:result] forKey:propertyName];                
+            } else {
+                [self setValue:[NSArray arrayWithArray:result] forKey:propertyName];
+            }
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
@@ -312,7 +320,11 @@
 				NSString *key = [data objectForKey:@"key"];
 				[result setObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:context] forKey:key];
 			}
-			[self setValue:[NSDictionary dictionaryWithDictionary:result] forKey:propertyName];
+            if ([propertyType hasPrefix:@"@\"NSMutable"]) {
+                [self setValue:[NSMutableDictionary dictionaryWithDictionary:result] forKey:propertyName];
+            } else {
+                [self setValue:[NSDictionary dictionaryWithDictionary:result] forKey:propertyName];
+            }
 		} else if ([propertyType hasPrefix:@"@"]) {
 			// an object besides of string, array or dictionary (NSKeyedArchiver used to encode)
 			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
