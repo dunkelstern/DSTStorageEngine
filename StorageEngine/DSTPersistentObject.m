@@ -59,7 +59,7 @@
 - (void)saveSubTables;
 
 // loading functions
-- (void)loadFromContext;
+- (BOOL)loadFromContext;
 @end
 
 @implementation DSTPersistentObject
@@ -97,7 +97,9 @@
     if (self) {
         context = theContext;
 		identifier = theIdentifier;
-		[self loadFromContext];
+		if (![self loadFromContext]) {
+            return nil;
+        }
 		[context registerObject:self];
 		dirty = NO;
 		[self addObserver:self
@@ -252,9 +254,12 @@
 	}
 }
 
-- (void)loadFromContext {
+- (BOOL)loadFromContext {
 	NSDictionary *data = [context fetchFromTable:[self tableName] pkid:identifier];
-	NSDictionary *properties = [[self class] fetchAllProperties];
+    if (!data) {
+        return NO;
+    }
+	NSDictionary *properties = [self fetchAllProperties];
 	
 	for (NSString *propertyName in properties) {
 		NSString *propertyType = [properties objectForKey:propertyName];
@@ -312,6 +317,7 @@
 			Log(@"Could not decode type %@, so will not try to", propertyType);
 		}
 	}
+    return YES;
 }
 
 #pragma mark - Private
