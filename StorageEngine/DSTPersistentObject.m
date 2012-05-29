@@ -120,8 +120,18 @@
 }
 
 + (NSSet *)keyPathsForValuesAffectingDirty {
-	NSDictionary *properties = [[self class] fetchAllProperties];
-	return [NSSet setWithArray:[properties allKeys]];
+	NSMutableArray *properties = [[self class] recursiveFetchPropertyNames];
+    NSString *remove = nil;
+    for (NSString *p in properties) {
+        if ([p isEqualToString:@"dirty"]) {
+            remove = p;
+        }
+    }
+    if (remove) {
+        [properties removeObject:remove];
+    }
+    
+	return [NSSet setWithArray:properties];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
@@ -401,6 +411,29 @@
 				}
 			}
 		}
+	}
+	
+	free(propList);
+	return properties;
+}
+
++ (NSMutableArray *)recursiveFetchPropertyNames {
+    NSMutableArray *properties;
+	
+	if ([self superclass] != [NSObject class])
+		properties = (NSMutableArray *)[[self superclass] recursiveFetchPropertyNames];
+	else
+		properties = [NSMutableArray array];
+	
+	NSUInteger propertyCount;
+	
+	objc_property_t *propList = class_copyPropertyList([self class], &propertyCount);
+    
+	for (NSUInteger i = 0; i < propertyCount; i++) {
+		objc_property_t property = propList[i];
+		
+		NSString *propertyName = [NSString stringWithUTF8String:property_getName(property)];
+        [properties addObject:propertyName];
 	}
 	
 	free(propList);
