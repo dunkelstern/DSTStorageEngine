@@ -48,6 +48,7 @@
 @interface DSTPersistentObject () {
     NSInteger identifier;
 	BOOL dirty;
+    BOOL observer;
 }
 
 // db table creation, only called if table not available
@@ -76,7 +77,8 @@
 			   forKeyPath:@"dirty"
 				  options:0
 				  context:nil];
-		
+		observer = YES;
+        
 		// save ourselves
 		if (![context tableExists:[self tableName]]) {
 			[self createTable];
@@ -101,6 +103,7 @@
 			   forKeyPath:@"dirty"
 				  options:0
 				  context:nil];
+		observer = YES;
 
 		[self didLoadFromContext];
     }
@@ -109,7 +112,9 @@
 
 
 - (void)dealloc {
-	[self removeObserver:self forKeyPath:@"dirty"];
+    if (observer) {
+        [self removeObserver:self forKeyPath:@"dirty"];
+    }
     [context deRegisterObject:self];
 }
 
