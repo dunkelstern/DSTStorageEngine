@@ -83,6 +83,7 @@
 		if (![context tableExists:[self tableName]]) {
 			[self createTable];
 		}
+        [self setDefaults];
 	}
     return self;
 }
