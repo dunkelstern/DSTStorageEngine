@@ -49,6 +49,7 @@
     NSInteger identifier;
 	BOOL dirty;
     BOOL observer;
+    __strong NSMutableDictionary *props;
 }
 
 // db table creation, only called if table not available
@@ -163,10 +164,15 @@
     [coder encodeObject:[NSNumber numberWithInteger:identifier] forKey:@"identifier"];
 }
 
+- (id)valueForUndefinedKey:(NSString *)key {
+    Log(@"WARNING: class %@, undefined key %@", [self class], key);
+    return nil;
+}
+
 #pragma mark - Internal API
 
 - (NSDictionary *)serialize {
-	NSDictionary *properties = [[self class] fetchAllProperties];
+	NSDictionary *properties = [self fetchAllProperties];
 	
 	NSMutableDictionary *propertiesSQL = [[NSMutableDictionary alloc] initWithCapacity:[properties count]];
 	for (NSString *propertyName in properties) {
@@ -204,7 +210,7 @@
 }
 
 - (void)saveSubTables {
-	NSDictionary *properties = [[self class] fetchAllProperties];
+	NSDictionary *properties = [self fetchAllProperties];
 	
 	// remove all objects for this from subtables
 	// and insert new objects into subtables
@@ -330,7 +336,7 @@
 }
 
 - (void)createTable {
-	NSDictionary *properties = [[self class] fetchAllProperties];
+	NSDictionary *properties = [self fetchAllProperties];
 	
 	NSMutableDictionary *propertiesSQL = [[NSMutableDictionary alloc] initWithCapacity:[properties count]];
 	for (NSString *propertyName in properties) {
@@ -380,8 +386,7 @@
 	[context createTable:[self tableName] columns:propertiesSQL version:[self version]];
 }
 
-+ (NSMutableDictionary *)fetchAllProperties {
-	static NSMutableDictionary *props = nil;
+- (NSMutableDictionary *)fetchAllProperties {
 	if (!props) {
 		props = [[self class] recursiveFetchProperties];
 	}
@@ -392,7 +397,7 @@
 	NSMutableDictionary *properties;
 	
 	if ([self superclass] != [NSObject class])
-		properties = (NSMutableDictionary *)[[self superclass] fetchAllProperties];
+		properties = (NSMutableDictionary *)[[self superclass] recursiveFetchProperties];
 	else
 		properties = [NSMutableDictionary dictionary];
 	
@@ -447,7 +452,7 @@
 }
 
 + (void)removeObjectFromAssociatedSubTables:(NSInteger)identifier context:(DSTPersistenceContext *)context {
-	NSDictionary *properties = [[self class] fetchAllProperties];
+	NSDictionary *properties = [[self class] recursiveFetchProperties];
 	
 	// remove all objects for this from subtables
 	for (NSString *propertyName in properties) {
