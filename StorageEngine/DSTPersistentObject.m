@@ -150,18 +150,18 @@
     }
     DSTCustomUnArchiver *archiver = (DSTCustomUnArchiver *)coder;
     
-	self = [[[self class] alloc] initWithIdentifier:[[archiver valueForKey:@"identifier"] integerValue] fromContext:[archiver context]];
+    identifier = [archiver decodeIntegerForKey:@"identifier"];
+    
+	self = [[[self class] alloc] initWithIdentifier:identifier fromContext:[archiver context]];
     if (self) {
         context = [archiver context];
-        [context registerObject:self];
-        
-        identifier = [[coder valueForKey:@"identifier"] integerValue];
+        [context registerObject:self];        
     }
     return self;
 }
 
 - (void)encodeWithCoder:(NSCoder *)coder {
-    [coder encodeObject:[NSNumber numberWithInteger:identifier] forKey:@"identifier"];
+    [coder encodeInteger:identifier forKey:@"identifier"];
 }
 
 - (id)valueForUndefinedKey:(NSString *)key {
