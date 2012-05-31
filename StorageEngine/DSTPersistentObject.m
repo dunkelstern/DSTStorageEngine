@@ -66,6 +66,7 @@
 @implementation DSTPersistentObject
 @synthesize identifier;
 @synthesize dirty;
+@synthesize context;
 
 #pragma mark - Setup
 - (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)theContext {
@@ -516,6 +517,10 @@
 	dirty = NO;
 	
 	return identifier;
+}
+
+- (void)markAsChanged {
+    dirty = YES;
 }
 
 #pragma mark - Abstract API
