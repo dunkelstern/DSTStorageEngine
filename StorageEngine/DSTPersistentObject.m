@@ -153,7 +153,7 @@
     
     identifier = [archiver decodeIntegerForKey:@"identifier"];
     
-	self = [[[self class] alloc] initWithIdentifier:identifier fromContext:[archiver context]];
+	self = [self initWithIdentifier:identifier fromContext:[archiver context]];
     if (self) {
         context = [archiver context];
         [context registerObject:self];        
@@ -199,7 +199,9 @@
 			// will be saved in saveSubTables
 		} else if ([propertyType hasPrefix:@"@"]) {
 			// an object besides of string, array or dictionary (NSKeyedArchiver used to encode)
-			[propertiesSQL setObject:[NSKeyedArchiver archivedDataWithRootObject:[self valueForKey:propertyName]] forKey:propertyName];			
+            if ([self valueForKey:propertyName]) {
+                [propertiesSQL setObject:[NSKeyedArchiver archivedDataWithRootObject:[self valueForKey:propertyName]] forKey:propertyName];
+            }
 		} else if ([propertyType hasPrefix:@"{"]) {
 			// here we have to handle structs, we currently can only do those that have NSValue support
 			[propertiesSQL setObject:[self valueForKey:propertyName] forKey:propertyName];
@@ -333,7 +335,11 @@
             }
 		} else if ([propertyType hasPrefix:@"@"]) {
 			// an object besides of string, array or dictionary (NSKeyedArchiver used to encode)
-			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
+            if (![[data objectForKey:[propertyName lowercaseString]] isKindOfClass:[NSNull class]]) {
+                [self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
+            } else {
+                [self setValue:nil forKey:propertyName];
+            }
 		} else if ([propertyType hasPrefix:@"{"]) {
 			// here we have to handle structs, we currently can only do those that have NSValue support
 			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
