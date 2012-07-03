@@ -383,7 +383,7 @@
 
 	int sqlResult = SQLITE_OK;
 	while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
-		[tables addObject:[NSString stringWithUTF8String:(const char *)sqlite3_column_text(stmt, 0)]];
+		[tables addObject:@((const char *)sqlite3_column_text(stmt, 0))];
 	}
 	
 	if (sqlResult != SQLITE_DONE) {
@@ -423,15 +423,15 @@
 - (NSDictionary *)convertResultToDictionary:(sqlite3_stmt *)stmt {
 	NSMutableDictionary	*data = [[NSMutableDictionary alloc] initWithCapacity:sqlite3_column_count(stmt)];
 	for (int i = 0; i < sqlite3_column_count(stmt); i++) {
-		NSString *key = [NSString stringWithUTF8String:sqlite3_column_name(stmt, i)];
+		NSString *key = @(sqlite3_column_name(stmt, i));
 		id obj;
 		
 		switch (sqlite3_column_type(stmt, i)) {
 			case SQLITE_INTEGER:
-				obj = [NSNumber numberWithInt:sqlite3_column_int(stmt,i)];
+				obj = @(sqlite3_column_int(stmt,i));
 				break;
 			case SQLITE_FLOAT:
-				obj = [NSNumber numberWithDouble:sqlite3_column_double(stmt,i)];
+				obj = @(sqlite3_column_double(stmt,i));
 				break;
 			case SQLITE_BLOB:
 				obj = [NSData dataWithBytes:sqlite3_column_blob(stmt, i) length:sqlite3_column_bytes(stmt, i)];
@@ -440,7 +440,7 @@
 				obj = [NSNull null];
 				break;
 			case SQLITE_TEXT:
-				obj = [NSString stringWithUTF8String:(const char *)sqlite3_column_text(stmt, i)];
+				obj = @((const char *)sqlite3_column_text(stmt, i));
 				break;
 			default:
 				Log(@"Unknown column type %d", sqlite3_column_type(stmt, i));

@@ -230,14 +230,11 @@
 			
 			NSArray *array = [self valueForKey:propertyName];
 			
-			NSArray *fields = [NSArray arrayWithObjects:@"objectID", @"sortOrder", @"data", nil];
+			NSArray *fields = @[@"objectID", @"sortOrder", @"data"];
 			NSUInteger i = 0;
 			for (id obj in array) {
 				NSData *data = [NSKeyedArchiver archivedDataWithRootObject:obj];
-				NSArray *values = [NSArray arrayWithObjects:
-								   [NSNumber numberWithUnsignedInteger:identifier],
-								   [NSNumber numberWithUnsignedInteger:i],
-								   data, nil];
+				NSArray *values = @[@((NSInteger)identifier), @(i), data];
 				[context insertObjectInto:subTableName values:[NSDictionary dictionaryWithObjects:values forKeys:fields]];
 				i++;
 			}
@@ -250,14 +247,12 @@
 			
 			NSDictionary *dict = [self valueForKey:propertyName];
 
-			NSArray *fields = [NSArray arrayWithObjects:@"objectID", @"key", @"data", nil];
 			for (NSString *key in [dict allKeys]) {
 				id obj = [dict objectForKey:key];
 				NSData *data = [NSKeyedArchiver archivedDataWithRootObject:obj];
-				NSArray *values = [NSArray arrayWithObjects:
-								   [NSNumber numberWithUnsignedInteger:identifier],
-								   key, data, nil];
-				[context insertObjectInto:subTableName values:[NSDictionary dictionaryWithObjects:values forKeys:fields]];
+				[context insertObjectInto:subTableName values:@{ @"objectID" : @((NSInteger)identifier),
+                                                                 @"key"      : key,
+                                                                 @"data"     : data }];
 			}
 		}
 	}
@@ -299,7 +294,7 @@
 
 			NSArray *array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
 			NSSortDescriptor *sorter = [[NSSortDescriptor alloc] initWithKey:@"sortorder" ascending:YES];
-			array = [array sortedArrayUsingDescriptors:[NSArray arrayWithObject:sorter]];
+			array = [array sortedArrayUsingDescriptors:@[sorter]];
 			
 			NSMutableArray *result = [[NSMutableArray alloc] initWithCapacity:[array count]];
 			for (NSDictionary *data in array) {
@@ -379,21 +374,17 @@
 		} else if (([propertyType hasPrefix:@"@\"NSArray"]) || ([propertyType hasPrefix:@"@\"NSMutableArray"])) {
 			// some array
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
-			NSDictionary *columns = [NSDictionary dictionaryWithObjectsAndKeys:
-									 @"INTEGER", @"objectID", // foreign key
-									 @"INTEGER", @"sortOrder",
-									 @"BLOB", @"data",
-									 nil];
+			NSDictionary *columns = @{@"objectID" : @"INTEGER", // foreign key
+									  @"sortOrder": @"INTEGER",
+									  @"data"     : @"BLOB"};
 			[context createTable:subTableName columns:columns version:[self version]];
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
-			NSDictionary *columns = [NSDictionary dictionaryWithObjectsAndKeys:
-									 @"INTEGER", @"objectID", // foreign key
-									 @"TEXT", @"key",
-									 @"BLOB", @"data",
-									 nil];
+			NSDictionary *columns = @{@"objectID": @"INTEGER", // foreign key
+									  @"key"     : @"TEXT",
+									  @"data"    : @"BLOB"};
 			[context createTable:subTableName columns:columns version:[self version]];
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if ([propertyType hasPrefix:@"@"]) {
@@ -432,8 +423,8 @@
 	for (NSUInteger i = 0; i < propertyCount; i++) {
 		objc_property_t property = propList[i];
 		
-		NSString *propertyName = [NSString stringWithUTF8String:property_getName(property)];
-		NSString *attributes = [NSString stringWithUTF8String: property_getAttributes(property)];
+		NSString *propertyName = @(property_getName(property));
+		NSString *attributes = @(property_getAttributes(property));
 
 		// readonly properties are not saved as it is assumed they will be generated on the fly
 		if ([attributes rangeOfString:@",R,"].location == NSNotFound) {
@@ -467,7 +458,7 @@
 	for (NSUInteger i = 0; i < propertyCount; i++) {
 		objc_property_t property = propList[i];
 		
-		NSString *propertyName = [NSString stringWithUTF8String:property_getName(property)];
+		NSString *propertyName = @(property_getName(property));
         [properties addObject:propertyName];
 	}
 	
