@@ -522,7 +522,11 @@
 
 #pragma mark - Abstract API
 - (void)setDefaults {
-    mustOverride();
+    IMP myImp = [DSTPersistentObject instanceMethodForSelector:@selector(setDefaults)];
+    IMP classImp = [[self class] instanceMethodForSelector:@selector(setDefaults)];
+    if (myImp == classImp) {
+        mustOverride();
+    }
 }
 
 - (NSUInteger)version {
