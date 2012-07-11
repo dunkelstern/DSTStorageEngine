@@ -49,7 +49,7 @@
     NSInteger identifier;
 	BOOL dirty;
     BOOL observer;
-    __strong NSMutableDictionary *props;
+    NSMutableDictionary *props;
 }
 
 // db table creation, only called if table not available

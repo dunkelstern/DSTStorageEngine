@@ -31,7 +31,7 @@
 
 #import "DSTCustomArchiver.h"
 @interface DSTCustomUnArchiver () {
-    __strong DSTPersistenceContext *context;
+    DSTPersistenceContext *context;
 }
 @end
 

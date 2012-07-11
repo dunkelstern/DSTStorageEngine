@@ -41,7 +41,7 @@
 @end
 
 @interface DSTPersistentObject : NSObject <NSCoding, DSTPersistentObjectSubclass> {
-    __strong DSTPersistenceContext *context;
+    DSTPersistenceContext *context;
 }
 
 + (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier;
