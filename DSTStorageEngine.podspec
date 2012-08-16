@@ -9,4 +9,5 @@ Pod::Spec.new do |s|
   s.source_files = 'StorageEngine/*'
   s.requires_arc = true
   s.library      = 'sqlite3'
+  s.platform     = :ios, '5.0'
 end
