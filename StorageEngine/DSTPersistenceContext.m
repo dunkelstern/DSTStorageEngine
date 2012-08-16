@@ -142,7 +142,7 @@
 	}
 	
 	// insert into version table
-	NSString *versionQuery = [NSString stringWithFormat:@"INSERT INTO storageengine_versions ( tablename, version, pkindex ) VALUES ( \"%@\", %d, 0 )", [name lowercaseString], version];
+	NSString *versionQuery = [NSString stringWithFormat:@"INSERT INTO storageengine_versions ( tablename, version, pkindex ) VALUES ( \"%@\", %ul, 0 )", [name lowercaseString], version];
 	if (sqlite3_exec(dbHandle, [versionQuery UTF8String],  NULL, NULL, &errmsg) != SQLITE_OK) {
 		FailLog(@"Could insert version string: %s", errmsg);
 		sqlite3_free(errmsg);
@@ -202,7 +202,7 @@
 		[query appendFormat:@"%@,", [key lowercaseString]];
 	}
 	[query deleteCharactersInRange:NSMakeRange([query length]-1, 1)];
-	[query appendFormat:@" ) VALUES ( %d,", pkid];
+	[query appendFormat:@" ) VALUES ( %ul,", pkid];
 	for(NSString *key in values) {
 		[query appendFormat:@":%@,", [key lowercaseString]];
 	}
@@ -283,7 +283,7 @@
 		[query appendFormat:@"%@ = :%@,", [key lowercaseString], [key lowercaseString]];
 	}
 	[query deleteCharactersInRange:NSMakeRange([query length]-1, 1)];
-	[query appendFormat:@" WHERE id = %d;", pkid];
+	[query appendFormat:@" WHERE id = %ul;", pkid];
 	
 	DebugLog(@"Query: %@", query);
 	sqlite3_stmt *stmt = NULL;

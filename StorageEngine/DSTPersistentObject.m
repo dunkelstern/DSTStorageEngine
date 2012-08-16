@@ -416,7 +416,7 @@
 	else
 		properties = [NSMutableDictionary dictionary];
 	
-	NSUInteger propertyCount;
+	unsigned int propertyCount;
 	
 	objc_property_t *propList = class_copyPropertyList([self class], &propertyCount);
 
@@ -451,7 +451,7 @@
 	else
 		properties = [NSMutableArray array];
 	
-	NSUInteger propertyCount;
+	unsigned int propertyCount;
 	
 	objc_property_t *propList = class_copyPropertyList([self class], &propertyCount);
     
