@@ -33,6 +33,18 @@
 
 #define LogEntry(_msg) [NSString stringWithFormat:@"%s:%d %@", __PRETTY_FUNCTION__, __LINE__, _msg]
 
+#ifdef Log
+    #undef Log
+#endif
+
+#ifdef DebugLog
+    #undef DebugLog
+#endif
+
+#ifdef FailLog
+    #undef FailLog
+#endif
+
 #if 0
 	#define DebugLog(_msg, ...) NSLog(LogEntry(_msg), __VA_ARGS__)
 	#define FailLog(_msg, ...) @throw [NSException exceptionWithName:NSInvalidArgumentException reason:_msg userInfo:nil]
