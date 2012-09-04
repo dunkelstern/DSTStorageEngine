@@ -33,3 +33,8 @@
 
 #import "DSTPersistenceContext.h"
 #import "DSTPersistentObject.h"
+
+@protocol DSTAnonymousPersistentObject <NSObject>
+- (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)context;
+- (DSTPersistentObject *)initWithIdentifier:(NSInteger)identifier fromContext:(DSTPersistenceContext *)context;
+@end
