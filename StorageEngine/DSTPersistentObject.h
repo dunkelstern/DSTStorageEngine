@@ -55,4 +55,7 @@
 @property (nonatomic, readonly, getter = isDirty) BOOL dirty;
 @property (nonatomic, readonly) DSTPersistenceContext *context;
 
+- (NSString *)tableName;
++ (NSString *)tableName;
+
 @end

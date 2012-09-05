@@ -347,19 +347,11 @@
 
 #pragma mark - Private
 - (NSString *)tableName {
-    Class theClass = [self class];
-    while ([theClass superclass] != [DSTPersistentObject class]) {
-        theClass = [theClass superclass];
-    }
-	return [NSString stringWithFormat:@"%@", theClass];
+    return [NSString stringWithFormat:@"%@", [self class]];
 }
 
 + (NSString *)tableName {
-    Class theClass = [self class];
-    while ([theClass superclass] != [DSTPersistentObject class]) {
-        theClass = [theClass superclass];
-    }
-	return [NSString stringWithFormat:@"%@", theClass];
+	return [NSString stringWithFormat:@"%@", [self class]];
 }
 
 - (void)createTable {
