@@ -72,7 +72,7 @@
 		[self fetchTables];
 
 		if (![self tableExists:@"storageengine_versions"]) {
-			if (sqlite3_exec(dbHandle, "CREATE TABLE storageengine_versions ( tablename TEXT, version INTEGER, pkindex INTEGER )",  NULL, NULL, &errmsg) != SQLITE_OK) {
+			if (sqlite3_exec(dbHandle, "CREATE TABLE storageengine_versions ( tablename TEXT, version INTEGER )",  NULL, NULL, &errmsg) != SQLITE_OK) {
 				FailLog(@"Could not create versioning table: %s", errmsg);
 				sqlite3_free(errmsg);
 				sqlite3_close(dbHandle);
@@ -142,7 +142,7 @@
 	}
 	
 	// insert into version table
-	NSString *versionQuery = [NSString stringWithFormat:@"INSERT INTO storageengine_versions ( tablename, version, pkindex ) VALUES ( \"%@\", %u, 0 )", [name lowercaseString], version];
+	NSString *versionQuery = [NSString stringWithFormat:@"INSERT INTO storageengine_versions ( tablename, version ) VALUES ( \"%@\", %u )", [name lowercaseString], version];
 	if (sqlite3_exec(dbHandle, [versionQuery UTF8String],  NULL, NULL, &errmsg) != SQLITE_OK) {
 		FailLog(@"Could insert version string: %s", errmsg);
 		sqlite3_free(errmsg);
@@ -157,52 +157,14 @@
 - (NSUInteger)insertObjectInto:(NSString *)name values:(NSDictionary *)values {	
 	sqlite3_stmt *stmt = NULL;
 	
-	// fetch new pkid
-	NSUInteger pkid = 0;
-	char *sql = "SELECT pkindex FROM storageengine_versions WHERE tablename = :table";
-	DebugLog(@"Query: %s", sql);
-	if (sqlite3_prepare_v2(dbHandle, sql, strlen(sql), &stmt, NULL) != SQLITE_OK) {
-		Log(@"Could prepare pkindex statement: %s", sqlite3_errmsg(dbHandle));
-		sqlite3_finalize(stmt);
-		return NSUIntegerMax;
-	}
-	int parameterIndex = sqlite3_bind_parameter_index(stmt, ":table");
-	sqlite3_bind_text(stmt, parameterIndex, [[name lowercaseString] UTF8String], strlen([[name lowercaseString] UTF8String]), SQLITE_TRANSIENT);
-	if (sqlite3_step(stmt) != SQLITE_ROW) {
-		Log(@"Could execute pkindex statement: %s", sqlite3_errmsg(dbHandle));
-		sqlite3_finalize(stmt);
-		return NSUIntegerMax;		
-	}
-	pkid = sqlite3_column_int(stmt, 0);
-	sqlite3_finalize(stmt);
-	
-	// update pkid counter
-	sql = "UPDATE storageengine_versions SET pkindex = :pkindex WHERE tablename = :table";
-	DebugLog(@"Query: %s", sql);
-	if (sqlite3_prepare_v2(dbHandle, sql, strlen(sql), &stmt, NULL) != SQLITE_OK) {
-		Log(@"Could prepare pkindex update statement: %s", sqlite3_errmsg(dbHandle));
-		sqlite3_finalize(stmt);
-		return NSUIntegerMax;
-	}
-	parameterIndex = sqlite3_bind_parameter_index(stmt, ":pkindex");
-	sqlite3_bind_int(stmt, parameterIndex, pkid+1);
-	parameterIndex = sqlite3_bind_parameter_index(stmt, ":table");
-	sqlite3_bind_text(stmt, parameterIndex, [[name lowercaseString] UTF8String], strlen([[name lowercaseString] UTF8String]), SQLITE_TRANSIENT);
-	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		Log(@"Could execute pkindex update statement: %s", sqlite3_errmsg(dbHandle));
-		sqlite3_finalize(stmt);
-		return NSUIntegerMax;		
-	}
-	sqlite3_finalize(stmt);
-	
 	// build insert query
 	NSMutableString *query = [[NSMutableString alloc] init];
-	[query appendFormat:@"INSERT INTO %@ ( id, ", [name lowercaseString]];
+	[query appendFormat:@"INSERT INTO %@ ( ", [name lowercaseString]];
 	for(NSString *key in values) {
 		[query appendFormat:@"%@,", [key lowercaseString]];
 	}
 	[query deleteCharactersInRange:NSMakeRange([query length]-1, 1)];
-	[query appendFormat:@" ) VALUES ( %u,", pkid];
+	[query appendFormat:@" ) VALUES ( "];
 	for(NSString *key in values) {
 		[query appendFormat:@":%@,", [key lowercaseString]];
 	}
@@ -226,7 +188,7 @@
 	}
 	sqlite3_finalize(stmt);
 	
-	return pkid;
+	return sqlite3_last_insert_rowid(dbHandle);
 }
 
 - (void)deleteFromTable:(NSString *)name pkid:(NSUInteger)pkid {
