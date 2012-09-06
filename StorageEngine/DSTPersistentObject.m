@@ -29,6 +29,8 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import <dispatch/dispatch.h>
+
 // TODO: Automatically register PersistentObject Objects that are properties of another PersistentObject
 // TODO: Allow cascaded deleting of complete PersistenObject trees
 // TODO: implement fault objects to allow loading only the part of the tree hierarchy that is accessed
@@ -57,7 +59,8 @@
 
 // saving functions
 - (NSDictionary *)serialize;
-- (void)saveSubTables;
+- (NSDictionary *)prepareSubTables;
+- (void)processSubTables:(NSDictionary *)actions;
 
 // loading functions
 - (BOOL)loadFromContext;
@@ -212,50 +215,75 @@
 	return propertiesSQL;
 }
 
-- (void)saveSubTables {
-	NSDictionary *properties = [self fetchAllProperties];
-	
+- (NSDictionary *)prepareSubTables {
+    NSDictionary *properties = [self fetchAllProperties];
+    NSMutableArray *remove = [NSMutableArray array];
+    NSMutableArray *insert = [NSMutableArray array];
+
 	// remove all objects for this from subtables
 	// and insert new objects into subtables
 	for (NSString *propertyName in properties) {
 		NSString *propertyType = [properties objectForKey:propertyName];
-		
+
 		// now parse property types into classes
 		if (([propertyType hasPrefix:@"@\"NSArray"]) || ([propertyType hasPrefix:@"@\"NSMutableArray"])) {
 			// some array
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 
 			// remove old entries
-			[context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
-			
+            [remove addObject:@{ @"subtable"   : subTableName,
+                                 @"where"      : @"objectID",
+                                 @"identifier" : @(identifier) }];
+
 			NSArray *array = [self valueForKey:propertyName];
-			
+
 			NSArray *fields = @[@"objectID", @"sortOrder", @"data"];
 			NSUInteger i = 0;
 			for (id obj in array) {
 				NSData *data = [NSKeyedArchiver archivedDataWithRootObject:obj];
 				NSArray *values = @[@((NSInteger)identifier), @(i), data];
-				[context insertObjectInto:subTableName values:[NSDictionary dictionaryWithObjects:values forKeys:fields]];
+                [insert addObject:@{ @"subtable" : subTableName,
+                                     @"values"   : [NSDictionary dictionaryWithObjects:values forKeys:fields] }];
 				i++;
 			}
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
-			
+
 			// remove old entries
-			[context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
-			
+            [remove addObject:@{ @"subtable" : subTableName,
+                                 @"where"    : @"objectID",
+                                 @"identifier" : @(identifier) }];
+
 			NSDictionary *dict = [self valueForKey:propertyName];
 
 			for (NSString *key in [dict allKeys]) {
 				id obj = [dict objectForKey:key];
 				NSData *data = [NSKeyedArchiver archivedDataWithRootObject:obj];
-				[context insertObjectInto:subTableName values:@{ @"objectID" : @((NSInteger)identifier),
-                                                                 @"key"      : key,
-                                                                 @"data"     : data }];
+                [insert addObject:@{ @"subtable" : subTableName,
+                                     @"values"   : @{
+                                        @"objectID" : @((NSInteger)identifier),
+                                        @"key"      : key,
+                                        @"data"     : data }
+                                     }];
 			}
 		}
 	}
+
+    return @{
+        @"remove" : remove,
+        @"insert" : insert
+    };
+}
+
+- (void)processSubTables:(NSDictionary *)actions {
+    for (NSDictionary *remove in actions[@"remove"]) {
+        [context deleteFromTable:remove[@"subtable"] where:remove[@"where"] isNumber:[remove[@"identifier"] integerValue]];
+    }
+
+    for (NSDictionary *insert in actions[@"insert"]) {
+        [context insertObjectInto:insert[@"subtable"] values:insert[@"values"]];
+    }
 }
 
 - (BOOL)loadFromContext {
@@ -498,22 +526,37 @@
 }
 
 - (NSInteger)save {
-	if (!dirty) {
-		return identifier;
-	}
+    @synchronized(self) {
+        if (!dirty) {
+            return identifier;
+        }
+
+        // serialize all values of this object before returning
+        NSDictionary *data = [self serialize];
+        NSDictionary *subtableActions = [self prepareSubTables];
+
+        // execute the query itself in a background thread
+        BOOL updateNeccessary = YES;
+        if (identifier < 0) {
+            @synchronized(context) {
+                identifier = [context insertObjectInto:[self tableName] values:data];
+                [context registerObject:self];
+            }
+            updateNeccessary = NO;
+        }
+
+        dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+        dispatch_async(queue, ^{
+            @synchronized(context) {
+                [context updateTable:[self tableName] pkid:identifier values:data];
+                [self processSubTables:subtableActions];
+            }
+        });
+
+        dirty = NO;
 	
-	NSDictionary *data = [self serialize];
-	if (identifier < 0) {
-		identifier = [context insertObjectInto:[self tableName] values:data];
-		[context registerObject:self];
-		[self saveSubTables];
-	} else {
-		[context updateTable:[self tableName] pkid:identifier values:data];
-		[self saveSubTables];
-	}
-	dirty = NO;
-	
-	return identifier;
+        return identifier;
+    }
 }
 
 - (void)markAsChanged {
