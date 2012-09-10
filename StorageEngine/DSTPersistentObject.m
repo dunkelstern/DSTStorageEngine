@@ -85,9 +85,11 @@
 		observer = YES;
         
 		// save ourselves
-		if (![context tableExists:[self tableName]]) {
-			[self createTable];
-		}
+        @synchronized(context) {
+            if (![context tableExists:[self tableName]]) {
+                [self createTable];
+            }
+        }
         [self setDefaults];
 	}
     return self;
@@ -102,10 +104,12 @@
     if (self) {
         context = theContext;
 		identifier = theIdentifier;
-		if (![self loadFromContext]) {
-            return nil;
+        @synchronized(context) {
+            if (![self loadFromContext]) {
+                return nil;
+            }
+            [context registerObject:self];
         }
-		[context registerObject:self];
 		dirty = NO;
 		[self addObserver:self
 			   forKeyPath:@"dirty"
@@ -277,17 +281,22 @@
 }
 
 - (void)processSubTables:(NSDictionary *)actions {
-    for (NSDictionary *remove in actions[@"remove"]) {
-        [context deleteFromTable:remove[@"subtable"] where:remove[@"where"] isNumber:[remove[@"identifier"] integerValue]];
-    }
+    @synchronized (context) {
+        for (NSDictionary *remove in actions[@"remove"]) {
+            [context deleteFromTable:remove[@"subtable"] where:remove[@"where"] isNumber:[remove[@"identifier"] integerValue]];
+        }
 
-    for (NSDictionary *insert in actions[@"insert"]) {
-        [context insertObjectInto:insert[@"subtable"] values:insert[@"values"]];
+        for (NSDictionary *insert in actions[@"insert"]) {
+            [context insertObjectInto:insert[@"subtable"] values:insert[@"values"]];
+        }
     }
 }
 
 - (BOOL)loadFromContext {
-	NSDictionary *data = [context fetchFromTable:[self tableName] pkid:identifier];
+    NSDictionary *data;
+    @synchronized(context) {
+        data = [context fetchFromTable:[self tableName] pkid:identifier];
+    }
     if (!data) {
         return NO;
     }
@@ -320,7 +329,10 @@
 			// some array
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 
-			NSArray *array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
+            NSArray *array;
+            @synchronized (context) {
+                array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
+            }
 			NSSortDescriptor *sorter = [[NSSortDescriptor alloc] initWithKey:@"sortorder" ascending:YES];
 			array = [array sortedArrayUsingDescriptors:@[sorter]];
 			
@@ -342,9 +354,11 @@
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
-			
-			NSArray *array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
-			
+
+            NSArray *array;
+            @synchronized (context) {
+                array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
+			}
 			NSMutableDictionary *result = [[NSMutableDictionary alloc] initWithCapacity:[array count]];
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
@@ -405,7 +419,9 @@
 			NSDictionary *columns = @{@"objectID" : @"INTEGER", // foreign key
 									  @"sortOrder": @"INTEGER",
 									  @"data"     : @"BLOB"};
-			[context createTable:subTableName columns:columns version:[self version]];
+            @synchronized (context) {
+                [context createTable:subTableName columns:columns version:[self version]];
+            }
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
@@ -413,7 +429,9 @@
 			NSDictionary *columns = @{@"objectID": @"INTEGER", // foreign key
 									  @"key"     : @"TEXT",
 									  @"data"    : @"BLOB"};
-			[context createTable:subTableName columns:columns version:[self version]];
+            @synchronized (context) {
+                [context createTable:subTableName columns:columns version:[self version]];
+            }
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if ([propertyType hasPrefix:@"@"]) {
 			// an object besides of string, array or dictionary (NSKeyedArchiver used to encode)
@@ -425,8 +443,10 @@
 			Log(@"Could not encode type %@, so will not try to", propertyType);
 		}
 	}
-	
-	[context createTable:[self tableName] columns:propertiesSQL version:[self version]];
+
+    @synchronized (context) {
+        [context createTable:[self tableName] columns:propertiesSQL version:[self version]];
+    }
 }
 
 - (NSMutableDictionary *)fetchAllProperties {
@@ -507,13 +527,17 @@
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 			
 			// remove entries
-			[context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
+            @synchronized (context) {
+                [context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
+            }
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 			
 			// remove entries
-			[context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
+            @synchronized (context) {
+                [context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
+            }
 		}
 	}
 }
@@ -521,8 +545,10 @@
 #pragma mark - Shared API
 
 + (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier {
-	[[self class] removeObjectFromAssociatedSubTables:identifier context:context];
-	[context deleteFromTable:[self tableName] pkid:identifier];
+    [[self class] removeObjectFromAssociatedSubTables:identifier context:context];
+    @synchronized (context) {
+        [context deleteFromTable:[self tableName] pkid:identifier];
+    }
 }
 
 - (NSInteger)save {
@@ -550,11 +576,10 @@
             @synchronized(context) {
                 [context updateTable:[self tableName] pkid:identifier values:data];
                 [self processSubTables:subtableActions];
+                dirty = NO;
             }
         });
 
-        dirty = NO;
-	
         return identifier;
     }
 }
