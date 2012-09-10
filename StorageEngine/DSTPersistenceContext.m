@@ -198,7 +198,7 @@
 	NSString *sql = [NSString stringWithFormat:@"DELETE FROM %@ WHERE id = :pkindex", [name lowercaseString]];
 	DebugLog(@"Query: %@", sql);
 	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
-		Log(@"Could delete statement: %s", sqlite3_errmsg(dbHandle));
+		Log(@"Could not prepare delete statement: %s", sqlite3_errmsg(dbHandle));
 		sqlite3_finalize(stmt);
 		return;
 	}
@@ -207,7 +207,7 @@
 
 	// execute statement
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		Log(@"Could execute delete statement: %s", sqlite3_errmsg(dbHandle));
+		Log(@"Could not execute delete statement: %s", sqlite3_errmsg(dbHandle));
 		sqlite3_finalize(stmt);
 		return;
 	}
@@ -222,7 +222,7 @@
 	NSString *sql = [NSString stringWithFormat:@"DELETE FROM %@ WHERE %@ = %@", [name lowercaseString], [fieldName lowercaseString], fieldPlaceholder];
 	DebugLog(@"Query: %@", sql);
 	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
-		Log(@"Could delete statement: %s", sqlite3_errmsg(dbHandle));
+		Log(@"Could not prepare delete statement: %s", sqlite3_errmsg(dbHandle));
 		sqlite3_finalize(stmt);
 		return;
 	}
@@ -231,7 +231,7 @@
 	
 	// execute statement
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		Log(@"Could execute delete statement: %s", sqlite3_errmsg(dbHandle));
+		Log(@"Could not execute delete statement: %s", sqlite3_errmsg(dbHandle));
 		sqlite3_finalize(stmt);
 		return;
 	}
