@@ -29,10 +29,14 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import <dispatch/dispatch.h>
 #import <Foundation/Foundation.h>
 
 @class DSTPersistentObject;
 @interface DSTPersistenceContext : NSObject
+
+@property (nonatomic, assign) dispatch_queue_t dispatchQueue;
+@property (nonatomic, strong, readonly) NSString *databaseFile;
 
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName;
 - (NSArray *)registeredObjects;

@@ -41,6 +41,9 @@
     if (self) {
         registeredObjects = [[NSMutableArray alloc] init];
 		dbHandle = NULL;
+
+        _dispatchQueue = dispatch_queue_create("de.dunkelstern.dstpersistencecontext", DISPATCH_QUEUE_SERIAL);
+
         if ([dbName hasPrefix:@"/"]) {
             // absolute path
             _databaseFile = dbName;
@@ -90,6 +93,7 @@
 }
 
 - (void)dealloc {
+    dispatch_release(_dispatchQueue);
 	if (dbHandle) {
 		sqlite3_close(dbHandle);
 	}

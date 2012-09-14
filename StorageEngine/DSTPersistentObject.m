@@ -85,10 +85,13 @@
 		observer = YES;
         
 		// save ourselves
-        @synchronized(context) {
-            if (![context tableExists:[self tableName]]) {
+        __block BOOL tableExists = NO;
+        dispatch_sync(context.dispatchQueue, ^{
+            tableExists = [context tableExists:[self tableName]];
+        });
+
+        if (!tableExists) {
                 [self createTable];
-            }
         }
         [self setDefaults];
 	}
@@ -104,12 +107,11 @@
     if (self) {
         context = theContext;
 		identifier = theIdentifier;
-        @synchronized(context) {
-            if (![self loadFromContext]) {
-                return nil;
-            }
-            [context registerObject:self];
+        if (![self loadFromContext]) {
+            return nil;
         }
+        [context registerObject:self];
+
 		dirty = NO;
 		[self addObserver:self
 			   forKeyPath:@"dirty"
@@ -281,22 +283,26 @@
 }
 
 - (void)processSubTables:(NSDictionary *)actions {
-    @synchronized (context) {
-        for (NSDictionary *remove in actions[@"remove"]) {
+    for (NSDictionary *remove in actions[@"remove"]) {
+        dispatch_async(context.dispatchQueue, ^{
             [context deleteFromTable:remove[@"subtable"] where:remove[@"where"] isNumber:[remove[@"identifier"] integerValue]];
-        }
-
-        for (NSDictionary *insert in actions[@"insert"]) {
-            [context insertObjectInto:insert[@"subtable"] values:insert[@"values"]];
-        }
+        });
     }
+
+    for (NSDictionary *insert in actions[@"insert"]) {
+        dispatch_async(context.dispatchQueue, ^{
+            [context insertObjectInto:insert[@"subtable"] values:insert[@"values"]];
+        });
+    }
+
+    
 }
 
 - (BOOL)loadFromContext {
-    NSDictionary *data;
-    @synchronized(context) {
+    __block NSDictionary *data;
+    dispatch_sync(context.dispatchQueue, ^{
         data = [context fetchFromTable:[self tableName] pkid:identifier];
-    }
+    });
     if (!data) {
         return NO;
     }
@@ -329,10 +335,10 @@
 			// some array
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 
-            NSArray *array;
-            @synchronized (context) {
+            __block NSArray *array;
+            dispatch_sync(context.dispatchQueue, ^{
                 array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
-            }
+            });
 			NSSortDescriptor *sorter = [[NSSortDescriptor alloc] initWithKey:@"sortorder" ascending:YES];
 			array = [array sortedArrayUsingDescriptors:@[sorter]];
 			
@@ -355,10 +361,10 @@
 			// some dictionary
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 
-            NSArray *array;
-            @synchronized (context) {
+            __block NSArray *array;
+            dispatch_sync(context.dispatchQueue, ^{
                 array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
-			}
+            });
 			NSMutableDictionary *result = [[NSMutableDictionary alloc] initWithCapacity:[array count]];
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
@@ -419,9 +425,9 @@
 			NSDictionary *columns = @{@"objectID" : @"INTEGER", // foreign key
 									  @"sortOrder": @"INTEGER",
 									  @"data"     : @"BLOB"};
-            @synchronized (context) {
+            dispatch_async(context.dispatchQueue, ^{
                 [context createTable:subTableName columns:columns version:[self version]];
-            }
+            });
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
@@ -429,9 +435,9 @@
 			NSDictionary *columns = @{@"objectID": @"INTEGER", // foreign key
 									  @"key"     : @"TEXT",
 									  @"data"    : @"BLOB"};
-            @synchronized (context) {
+            dispatch_async(context.dispatchQueue, ^{
                 [context createTable:subTableName columns:columns version:[self version]];
-            }
+            });
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if ([propertyType hasPrefix:@"@"]) {
 			// an object besides of string, array or dictionary (NSKeyedArchiver used to encode)
@@ -444,9 +450,9 @@
 		}
 	}
 
-    @synchronized (context) {
+    dispatch_sync(context.dispatchQueue, ^{
         [context createTable:[self tableName] columns:propertiesSQL version:[self version]];
-    }
+    });
 }
 
 - (NSMutableDictionary *)fetchAllProperties {
@@ -527,17 +533,17 @@
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 			
 			// remove entries
-            @synchronized (context) {
+            dispatch_async(context.dispatchQueue, ^{
                 [context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
-            }
+            });
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
 			// some dictionary
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
-			
+
 			// remove entries
-            @synchronized (context) {
+            dispatch_async(context.dispatchQueue, ^{
                 [context deleteFromTable:subTableName where:@"objectID" isNumber:identifier];
-            }
+            });
 		}
 	}
 }
@@ -546,9 +552,9 @@
 
 + (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier {
     [[self class] removeObjectFromAssociatedSubTables:identifier context:context];
-    @synchronized (context) {
+    dispatch_async(context.dispatchQueue, ^{
         [context deleteFromTable:[self tableName] pkid:identifier];
-    }
+    });
 }
 
 - (NSInteger)save {
@@ -564,20 +570,17 @@
         // execute the query itself in a background thread
         BOOL updateNeccessary = YES;
         if (identifier < 0) {
-            @synchronized(context) {
+            dispatch_sync(context.dispatchQueue, ^{
                 identifier = [context insertObjectInto:[self tableName] values:data];
                 [context registerObject:self];
-            }
+            });
             updateNeccessary = NO;
         }
 
-        dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
-        dispatch_async(queue, ^{
-            @synchronized(context) {
-                [context updateTable:[self tableName] pkid:identifier values:data];
-                [self processSubTables:subtableActions];
-                dirty = NO;
-            }
+        dispatch_async(context.dispatchQueue, ^{
+            [context updateTable:[self tableName] pkid:identifier values:data];
+            [self processSubTables:subtableActions];
+            dirty = NO;
         });
 
         return identifier;
