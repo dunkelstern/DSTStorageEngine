@@ -41,9 +41,14 @@
     if (self) {
         registeredObjects = [[NSMutableArray alloc] init];
 		dbHandle = NULL;
-		
-		NSString *databaseFile = [[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] objectAtIndex:0] URLByAppendingPathComponent:dbName] absoluteString];
-		int result = sqlite3_open([databaseFile UTF8String], &dbHandle);
+        if ([dbName hasPrefix:@"/"]) {
+            // absolute path
+            _databaseFile = dbName;
+        } else {
+            // relative to document dir
+            _databaseFile = [[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] objectAtIndex:0] URLByAppendingPathComponent:dbName] absoluteString];
+        }
+		int result = sqlite3_open([_databaseFile UTF8String], &dbHandle);
 		if (result) {
 			FailLog(@"Could not open database: %s", sqlite3_errmsg(dbHandle));
 			sqlite3_close(dbHandle);
