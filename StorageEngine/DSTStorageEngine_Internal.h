@@ -59,6 +59,7 @@
     NSMutableArray *registeredObjects;
 	NSMutableArray *tables;
 	sqlite3 *dbHandle;
+    BOOL transactionRunning;
 }
 - (void)registerObject:(DSTPersistentObject *)object;
 - (void)deRegisterObject:(DSTPersistentObject *)object;

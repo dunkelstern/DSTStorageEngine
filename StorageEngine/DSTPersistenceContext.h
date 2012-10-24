@@ -40,5 +40,9 @@
 
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName;
 - (NSArray *)registeredObjects;
+- (void)optimize;
+- (void)beginTransaction;
+- (void)endTransaction;
+
 + (void)removeOnDiskRepresentationForDatabase:(NSString *)dbName;
 @end

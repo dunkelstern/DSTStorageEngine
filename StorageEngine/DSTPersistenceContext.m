@@ -58,7 +58,7 @@
 			dbHandle = NULL;
 			return nil;
 		}
-		
+
 		char *errmsg = NULL;
 		if (sqlite3_exec(dbHandle, "PRAGMA encoding = \"UTF-8\"",  NULL, NULL, &errmsg) != SQLITE_OK) {
 			FailLog(@"Could not set encoding to UTF-8: %s", errmsg);
@@ -68,14 +68,30 @@
 			return nil;
 		}
 		
-		if (sqlite3_exec(dbHandle, "PRAGMA auto_vacuum=1",  NULL, NULL, &errmsg) != SQLITE_OK) {
+		if (sqlite3_exec(dbHandle, "PRAGMA auto_vacuum=0",  NULL, NULL, &errmsg) != SQLITE_OK) {
 			FailLog(@"Could not set auto vaccum: %s", errmsg);
 			sqlite3_free(errmsg);
 			sqlite3_close(dbHandle);
 			dbHandle = NULL;
 			return nil;
 		}
-		
+
+		if (sqlite3_exec(dbHandle, "PRAGMA journal_mode=MEMORY",  NULL, NULL, &errmsg) != SQLITE_OK) {
+			FailLog(@"Could not set journal mode: %s", errmsg);
+			sqlite3_free(errmsg);
+			sqlite3_close(dbHandle);
+			dbHandle = NULL;
+			return nil;
+		}
+
+		if (sqlite3_exec(dbHandle, "PRAGMA temp_store=2",  NULL, NULL, &errmsg) != SQLITE_OK) {
+			FailLog(@"Could not set temporary store mode: %s", errmsg);
+			sqlite3_free(errmsg);
+			sqlite3_close(dbHandle);
+			dbHandle = NULL;
+			return nil;
+		}
+
 		tables = [[NSMutableArray alloc] initWithCapacity:1];
 		[self fetchTables];
 
@@ -87,7 +103,7 @@
 				return nil;
 			}
 			[self fetchTables];
-		}		
+		}
     }
     return self;
 }
@@ -95,11 +111,41 @@
 - (void)dealloc {
     dispatch_release(_dispatchQueue);
 	if (dbHandle) {
+        if (transactionRunning) [self endTransaction];
 		sqlite3_close(dbHandle);
 	}
 }
 
 #pragma mark - API
+- (void)optimize {
+    if (transactionRunning) [self endTransaction];
+    char *errmsg = NULL;
+    if (sqlite3_exec(dbHandle, "VACUUM",  NULL, NULL, &errmsg) != SQLITE_OK) {
+        FailLog(@"Could not optimize database: %s", errmsg);
+    }
+}
+
+- (void)beginTransaction {
+    char *errmsg = NULL;
+    if (transactionRunning) return;
+    if (sqlite3_exec(dbHandle, "BEGIN TRANSACTION",  NULL, NULL, &errmsg) != SQLITE_OK) {
+        FailLog(@"Could not begin database transaction: %s", errmsg);
+    } else {
+        transactionRunning = YES;
+    }
+}
+
+- (void)endTransaction {
+    if (!transactionRunning) return;
+
+    char *errmsg = NULL;
+    if (sqlite3_exec(dbHandle, "END TRANSACTION",  NULL, NULL, &errmsg) != SQLITE_OK) {
+        FailLog(@"Could not end database transaction: %s", errmsg);
+    } else {
+        transactionRunning = NO;
+    }
+}
+
 - (NSArray *)registeredObjects {
     return [NSArray arrayWithArray:registeredObjects];
 }
