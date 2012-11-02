@@ -109,41 +109,49 @@
 }
 
 - (void)dealloc {
+    dispatch_sync(self.dispatchQueue, ^{
+        if (dbHandle) {
+            if (transactionRunning) [self endTransaction];
+            sqlite3_close(dbHandle);
+        }
+    });
     dispatch_release(_dispatchQueue);
-	if (dbHandle) {
-        if (transactionRunning) [self endTransaction];
-		sqlite3_close(dbHandle);
-	}
 }
 
 #pragma mark - API
 - (void)optimize {
-    if (transactionRunning) [self endTransaction];
-    char *errmsg = NULL;
-    if (sqlite3_exec(dbHandle, "VACUUM",  NULL, NULL, &errmsg) != SQLITE_OK) {
-        FailLog(@"Could not optimize database: %s", errmsg);
-    }
+    dispatch_async(self.dispatchQueue, ^{
+        if (transactionRunning) [self endTransaction];
+        char *errmsg = NULL;
+        if (sqlite3_exec(dbHandle, "VACUUM",  NULL, NULL, &errmsg) != SQLITE_OK) {
+            FailLog(@"Could not optimize database: %s", errmsg);
+        }
+    });
 }
 
 - (void)beginTransaction {
-    char *errmsg = NULL;
-    if (transactionRunning) return;
-    if (sqlite3_exec(dbHandle, "BEGIN TRANSACTION",  NULL, NULL, &errmsg) != SQLITE_OK) {
-        FailLog(@"Could not begin database transaction: %s", errmsg);
-    } else {
-        transactionRunning = YES;
-    }
+    dispatch_async(self.dispatchQueue, ^{
+        char *errmsg = NULL;
+        if (transactionRunning) return;
+        if (sqlite3_exec(dbHandle, "BEGIN TRANSACTION",  NULL, NULL, &errmsg) != SQLITE_OK) {
+            FailLog(@"Could not begin database transaction: %s", errmsg);
+        } else {
+            transactionRunning = YES;
+        }
+    });
 }
 
 - (void)endTransaction {
-    if (!transactionRunning) return;
+    dispatch_async(self.dispatchQueue, ^{
+        if (!transactionRunning) return;
 
-    char *errmsg = NULL;
-    if (sqlite3_exec(dbHandle, "END TRANSACTION",  NULL, NULL, &errmsg) != SQLITE_OK) {
-        FailLog(@"Could not end database transaction: %s", errmsg);
-    } else {
-        transactionRunning = NO;
-    }
+        char *errmsg = NULL;
+        if (sqlite3_exec(dbHandle, "END TRANSACTION",  NULL, NULL, &errmsg) != SQLITE_OK) {
+            FailLog(@"Could not end database transaction: %s", errmsg);
+        } else {
+            transactionRunning = NO;
+        }
+    });
 }
 
 - (NSArray *)registeredObjects {
