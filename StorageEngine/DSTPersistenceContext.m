@@ -49,7 +49,7 @@
             _databaseFile = dbName;
         } else {
             // relative to document dir
-            _databaseFile = [[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] objectAtIndex:0] URLByAppendingPathComponent:dbName] absoluteString];
+            _databaseFile = [[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] objectAtIndex:0] URLByAppendingPathComponent:dbName] path];
         }
 		int result = sqlite3_open([_databaseFile UTF8String], &dbHandle);
 		if (result) {
