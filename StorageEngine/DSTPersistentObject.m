@@ -73,6 +73,11 @@
 
 #pragma mark - Setup
 - (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)theContext {
+    if ([theContext isReadonly]) {
+		FailLog(@"Database is read only!");
+		return nil;
+    }
+
     self = [super init];
     if (self) {
         context = theContext;
@@ -283,6 +288,11 @@
 }
 
 - (void)processSubTables:(NSDictionary *)actions {
+    if ([context isReadonly]) {
+		FailLog(@"Database is read only!");
+		return;
+    }
+
     for (NSDictionary *remove in actions[@"remove"]) {
         dispatch_async(context.dispatchQueue, ^{
             [context deleteFromTable:remove[@"subtable"] where:remove[@"where"] isNumber:[remove[@"identifier"] integerValue]];
@@ -403,6 +413,11 @@
 }
 
 - (void)createTable {
+    if ([context isReadonly]) {
+		FailLog(@"Database is read only!");
+		return;
+    }
+
 	NSDictionary *properties = [self fetchAllProperties];
 	
 	NSMutableDictionary *propertiesSQL = [[NSMutableDictionary alloc] initWithCapacity:[properties count]];
@@ -521,6 +536,10 @@
 }
 
 + (void)removeObjectFromAssociatedSubTables:(NSInteger)identifier context:(DSTPersistenceContext *)context {
+    if ([context isReadonly]) {
+		FailLog(@"Database is read only!");
+		return;
+    }
 	NSDictionary *properties = [[self class] recursiveFetchProperties];
 	
 	// remove all objects for this from subtables
@@ -551,6 +570,10 @@
 #pragma mark - Shared API
 
 + (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier {
+    if ([context isReadonly]) {
+		FailLog(@"Database is read only!");
+		return;
+    }
     [[self class] removeObjectFromAssociatedSubTables:identifier context:context];
     dispatch_async(context.dispatchQueue, ^{
         [context deleteFromTable:[self tableName] pkid:identifier];
@@ -558,6 +581,11 @@
 }
 
 - (NSInteger)save {
+    if ([context isReadonly]) {
+		FailLog(@"Database is read only!");
+		return -1;
+    }
+
     @synchronized(self) {
         if (!dirty) {
             return identifier;

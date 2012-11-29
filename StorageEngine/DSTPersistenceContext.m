@@ -37,10 +37,15 @@
 @implementation DSTPersistenceContext
 
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName {
+    return [self initWithDatabase:dbName readonly:NO];
+}
+
+- (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName readonly:(BOOL)readonly {
     self = [super init];
     if (self) {
         registeredObjects = [[NSMutableArray alloc] init];
 		dbHandle = NULL;
+        _readonly = readonly;
 
         _dispatchQueue = dispatch_queue_create("de.dunkelstern.dstpersistencecontext", DISPATCH_QUEUE_SERIAL);
 
@@ -51,7 +56,13 @@
             // relative to document dir
             _databaseFile = [[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] objectAtIndex:0] URLByAppendingPathComponent:dbName] path];
         }
-		int result = sqlite3_open([_databaseFile UTF8String], &dbHandle);
+		int result;
+        if (_readonly) {
+            result = sqlite3_open_v2([_databaseFile UTF8String], &dbHandle, SQLITE_OPEN_READONLY, NULL);
+        } else {
+            // same as result = sqlite3_open([_databaseFile UTF8String], &dbHandle);
+            result = sqlite3_open_v2([_databaseFile UTF8String], &dbHandle, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+        }
 		if (result) {
 			FailLog(@"Could not open database: %s", sqlite3_errmsg(dbHandle));
 			sqlite3_close(dbHandle);
@@ -96,13 +107,18 @@
 		[self fetchTables];
 
 		if (![self tableExists:@"storageengine_versions"]) {
-			if (sqlite3_exec(dbHandle, "CREATE TABLE storageengine_versions ( tablename TEXT, version INTEGER )",  NULL, NULL, &errmsg) != SQLITE_OK) {
-				FailLog(@"Could not create versioning table: %s", errmsg);
-				sqlite3_free(errmsg);
-				sqlite3_close(dbHandle);
-				return nil;
-			}
-			[self fetchTables];
+            if (!_readonly) {
+                if (sqlite3_exec(dbHandle, "CREATE TABLE storageengine_versions ( tablename TEXT, version INTEGER )",  NULL, NULL, &errmsg) != SQLITE_OK) {
+                    FailLog(@"Could not create versioning table: %s", errmsg);
+                    sqlite3_free(errmsg);
+                    sqlite3_close(dbHandle);
+                    return nil;
+                }
+                [self fetchTables];
+            } else {
+                FailLog(@"Versioning table missing!");
+                return nil;
+            }
 		}
     }
     return self;
@@ -120,6 +136,7 @@
 
 #pragma mark - API
 - (void)optimize {
+    if (_readonly) return;
     dispatch_async(self.dispatchQueue, ^{
         if (transactionRunning) [self endTransaction];
         char *errmsg = NULL;
@@ -130,6 +147,7 @@
 }
 
 - (void)beginTransaction {
+    if (_readonly) return;
     dispatch_async(self.dispatchQueue, ^{
         char *errmsg = NULL;
         if (transactionRunning) return;
@@ -142,6 +160,7 @@
 }
 
 - (void)endTransaction {
+    if (_readonly) return;
     dispatch_async(self.dispatchQueue, ^{
         if (!transactionRunning) return;
 
@@ -180,6 +199,10 @@
 }
 
 - (BOOL)createTable:(NSString *)name columns:(NSDictionary *)columns version:(NSUInteger)version {
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return NO;
+    }
 	if ([self tableExists:name]) {
 		FailLog(@"Table %@ exists already", name);
 		return NO;
@@ -218,6 +241,10 @@
 }
 
 - (NSUInteger)insertObjectInto:(NSString *)name values:(NSDictionary *)values {	
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return NSUIntegerMax;
+    }
 	sqlite3_stmt *stmt = NULL;
 	
 	// build insert query
@@ -255,6 +282,10 @@
 }
 
 - (void)deleteFromTable:(NSString *)name pkid:(NSUInteger)pkid {
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return;
+    }
 	sqlite3_stmt *stmt = NULL;
 
 	// prepare statement
@@ -278,6 +309,10 @@
 }
 
 - (void)deleteFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number {
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return;
+    }
 	sqlite3_stmt *stmt = NULL;
 	NSString *fieldPlaceholder = [NSString stringWithFormat:@":%@", [fieldName lowercaseString]];
 	
@@ -302,6 +337,10 @@
 }
 
 - (void)updateTable:(NSString *)name pkid:(NSUInteger)pkid values:(NSDictionary *)values {
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return;
+    }
 	NSMutableString *query = [[NSMutableString alloc] init];
 	[query appendFormat:@"UPDATE %@ SET ", [name lowercaseString]];
 	for(NSString *key in values) {
