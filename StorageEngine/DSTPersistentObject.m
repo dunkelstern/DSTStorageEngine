@@ -400,6 +400,7 @@
 			Log(@"Could not decode type %@, so will not try to", propertyType);
 		}
 	}
+    dirty = NO;
     return YES;
 }
 
