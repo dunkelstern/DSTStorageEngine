@@ -88,7 +88,7 @@
 				  options:0
 				  context:nil];
 		observer = YES;
-        
+
 		// save ourselves
         __block BOOL tableExists = NO;
         dispatch_sync(context.dispatchQueue, ^{
@@ -248,13 +248,15 @@
 
 			NSArray *array = [self valueForKey:propertyName];
 
-			NSArray *fields = @[@"objectID", @"sortOrder", @"data"];
 			NSUInteger i = 0;
 			for (id obj in array) {
 				NSData *data = [NSKeyedArchiver archivedDataWithRootObject:obj];
-				NSArray *values = @[@((NSInteger)identifier), @(i), data];
                 [insert addObject:@{ @"subtable" : subTableName,
-                                     @"values"   : [NSDictionary dictionaryWithObjects:values forKeys:fields] }];
+                                     @"values"   : @{
+                                        @"objectID"  : @((NSInteger)identifier),
+                                        @"sortOrder" : @(i),
+                                        @"data"      : data }
+                                    }];
 				i++;
 			}
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
@@ -466,7 +468,7 @@
 		}
 	}
 
-    dispatch_sync(context.dispatchQueue, ^{
+    dispatch_async(context.dispatchQueue, ^{
         [context createTable:[self tableName] columns:propertiesSQL version:[self version]];
     });
 }
@@ -588,7 +590,7 @@
     }
 
     @synchronized(self) {
-        if (!dirty) {
+        if ((!dirty) && !(identifier < 0)) {
             return identifier;
         }
 
@@ -606,7 +608,7 @@
             updateNeccessary = NO;
         }
 
-        dispatch_async(context.dispatchQueue, ^{
+        dispatch_sync(context.dispatchQueue, ^{
             [context updateTable:[self tableName] pkid:identifier values:data];
             [self processSubTables:subtableActions];
             dirty = NO;
@@ -614,6 +616,12 @@
 
         return identifier;
     }
+}
+
+- (void)backgroundSave {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        [self save];
+    });
 }
 
 - (void)markAsChanged {

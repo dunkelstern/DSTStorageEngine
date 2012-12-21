@@ -50,6 +50,7 @@
 - (DSTPersistentObject *)initWithIdentifier:(NSInteger)identifier fromContext:(DSTPersistenceContext *)context;
 - (void)markAsChanged; // "dirtify" object e.g. if something in an mutable array changed
 - (NSInteger)save; // returns new ID if saved first or current ID if updated
+- (void)backgroundSave;
 
 @property (nonatomic, readonly) NSInteger identifier;
 @property (nonatomic, readonly, getter = isDirty) BOOL dirty;
