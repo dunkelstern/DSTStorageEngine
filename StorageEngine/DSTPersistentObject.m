@@ -138,18 +138,7 @@
 }
 
 + (NSSet *)keyPathsForValuesAffectingDirty {
-	NSMutableArray *properties = [[self class] recursiveFetchPropertyNames];
-    NSString *remove = nil;
-    for (NSString *p in properties) {
-        if ([p isEqualToString:@"dirty"]) {
-            remove = p;
-        }
-    }
-    if (remove) {
-        [properties removeObject:remove];
-    }
-    
-	return [NSSet setWithArray:properties];
+	return [NSSet setWithArray:[[[self class] recursiveFetchProperties] allKeys]];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
@@ -303,7 +292,13 @@
 
     for (NSDictionary *insert in actions[@"insert"]) {
         dispatch_async(context.dispatchQueue, ^{
-            [context insertObjectInto:insert[@"subtable"] values:insert[@"values"]];
+            NSDictionary *values = insert[@"values"];
+            // fix -1 identifier if object is saved the first time
+            if ([values[@"objectID"] integerValue] < 0) {
+                values = [values mutableCopy];
+                [(NSMutableDictionary *)values setObject:@((NSInteger)identifier) forKey:@"objectID"];
+            }
+            [context insertObjectInto:insert[@"subtable"] values:values];
         });
     }
 
@@ -482,11 +477,13 @@
 
 + (NSMutableDictionary *)recursiveFetchProperties {
 	NSMutableDictionary *properties;
-	
-	if ([self superclass] != [NSObject class])
+    NSArray *exclude = [self backReferencingProperties];
+
+	if ([self superclass] != [NSObject class]) {
 		properties = (NSMutableDictionary *)[[self superclass] recursiveFetchProperties];
-	else
+    } else {
 		properties = [NSMutableDictionary dictionary];
+    }
 	
 	unsigned int propertyCount;
 	
@@ -496,10 +493,22 @@
 		objc_property_t property = propList[i];
 		
 		NSString *propertyName = @(property_getName(property));
+
+        // do not add backReferencingProperties
+        BOOL skip = NO;
+        for (NSString *property in exclude) {
+            if ([propertyName isEqualToString:property]) {
+                skip = YES;
+            }
+        }
+        if (skip) continue;
+
 		NSString *attributes = @(property_getAttributes(property));
 
 		// readonly properties are not saved as it is assumed they will be generated on the fly
-		if ([attributes rangeOfString:@",R,"].location == NSNotFound) {
+        // weak properties are not saved as it is assumed they backreference to the parent object
+		if (([attributes rangeOfString:@",R,"].location == NSNotFound) &&
+            ([attributes rangeOfString:@",W,"].location == NSNotFound)) {
 			NSArray *parts = [attributes componentsSeparatedByString:@","];
 			if (parts != nil) {
 				if ([parts count] > 0) {
@@ -515,27 +524,8 @@
 	return properties;
 }
 
-+ (NSMutableArray *)recursiveFetchPropertyNames {
-    NSMutableArray *properties;
-	
-	if ([self superclass] != [NSObject class])
-		properties = (NSMutableArray *)[[self superclass] recursiveFetchPropertyNames];
-	else
-		properties = [NSMutableArray array];
-	
-	unsigned int propertyCount;
-	
-	objc_property_t *propList = class_copyPropertyList([self class], &propertyCount);
-    
-	for (NSUInteger i = 0; i < propertyCount; i++) {
-		objc_property_t property = propList[i];
-		
-		NSString *propertyName = @(property_getName(property));
-        [properties addObject:propertyName];
-	}
-	
-	free(propList);
-	return properties;
++ (NSArray *)backReferencingProperties {
+    return @[];
 }
 
 + (void)removeObjectFromAssociatedSubTables:(NSInteger)identifier context:(DSTPersistenceContext *)context {

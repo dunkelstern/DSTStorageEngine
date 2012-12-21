@@ -38,6 +38,7 @@
 
 @optional
 - (void)didLoadFromContext;
++ (NSArray *)backReferencingProperties;
 @end
 
 @interface DSTPersistentObject : NSObject <NSCoding, DSTPersistentObjectSubclass> {
