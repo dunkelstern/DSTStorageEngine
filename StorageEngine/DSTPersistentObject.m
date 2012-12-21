@@ -165,6 +165,11 @@
 }
 
 - (void)encodeWithCoder:(NSCoder *)coder {
+    if (identifier < 0) {
+        dirty = YES;
+        [self save];
+        
+    }
     [coder encodeInteger:identifier forKey:@"identifier"];
 }
 
