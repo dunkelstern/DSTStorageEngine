@@ -33,7 +33,6 @@
 
 // TODO: Automatically register PersistentObject Objects that are properties of another PersistentObject
 // TODO: Allow cascaded deleting of complete PersistenObject trees
-// TODO: implement fault objects to allow loading only the part of the tree hierarchy that is accessed
 // TODO: Recursive saving of object trees
 // TODO: Detect referencing cycles and bail out if found instead of looping endlessly
 
@@ -46,6 +45,9 @@
 #import "DSTCustomArchiver.h"
 #import "DSTStorageEngine_Internal.h"
 
+#if DST_LAZY_LOADING
+# import "DSTLazyLoadingObject.h"
+#endif
 
 @interface DSTPersistentObject () {
     NSInteger identifier;
@@ -69,7 +71,6 @@
 @implementation DSTPersistentObject
 @synthesize identifier;
 @synthesize dirty;
-@synthesize context;
 
 #pragma mark - Setup
 - (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)theContext {
@@ -80,7 +81,7 @@
 
     self = [super init];
     if (self) {
-        context = theContext;
+        _context = theContext;
 		identifier = -1;
 		dirty = YES;
 		[self addObserver:self
@@ -91,8 +92,8 @@
 
 		// save ourselves
         __block BOOL tableExists = NO;
-        dispatch_sync(context.dispatchQueue, ^{
-            tableExists = [context tableExists:[self tableName]];
+        dispatch_sync(_context.dispatchQueue, ^{
+            tableExists = [_context tableExists:[self tableName]];
         });
 
         if (!tableExists) {
@@ -110,12 +111,12 @@
 
     self = [super init];
     if (self) {
-        context = theContext;
+        _context = theContext;
 		identifier = theIdentifier;
         if (![self loadFromContext]) {
             return nil;
         }
-        [context registerObject:self];
+        [_context registerObject:self];
 
 		dirty = NO;
 		[self addObserver:self
@@ -134,7 +135,7 @@
     if (observer) {
         [self removeObserver:self forKeyPath:@"dirty"];
     }
-    [context deRegisterObject:self];
+    [_context deRegisterObject:self];
 }
 
 + (NSSet *)keyPathsForValuesAffectingDirty {
@@ -152,17 +153,30 @@
     if (![coder isKindOfClass:[DSTCustomUnArchiver class]]) {
         @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"PersistentObject can only be unarchived by CustomArchiver" userInfo:nil];
     }
+#if DST_LAZY_LOADING
+    return self;
+#else
     DSTCustomUnArchiver *archiver = (DSTCustomUnArchiver *)coder;
-    
     identifier = [archiver decodeIntegerForKey:@"identifier"];
     
 	self = [self initWithIdentifier:identifier fromContext:[archiver context]];
     if (self) {
-        context = [archiver context];
-        [context registerObject:self];        
+        _context = [archiver context];
+        [_context registerObject:self];
+        if ([self.class respondsToSelector:@selector(parentAttribute)]) {
+            [self setValue:[archiver parent] forKey:[self.class parentAttribute]];
+        }
     }
     return self;
+#endif
 }
+
+#if DST_LAZY_LOADING
+- (id)awakeAfterUsingCoder:(NSCoder *)aDecoder {
+    DSTLazyLoadingObject *lazy = [[DSTLazyLoadingObject alloc] initWithClass:self.class coder:aDecoder];
+    return (DSTPersistentObject *)lazy;
+}
+#endif
 
 - (void)encodeWithCoder:(NSCoder *)coder {
     if (identifier < 0) {
@@ -284,26 +298,26 @@
 }
 
 - (void)processSubTables:(NSDictionary *)actions {
-    if ([context isReadonly]) {
+    if ([_context isReadonly]) {
 		FailLog(@"Database is read only!");
 		return;
     }
 
     for (NSDictionary *remove in actions[@"remove"]) {
-        dispatch_async(context.dispatchQueue, ^{
-            [context deleteFromTable:remove[@"subtable"] where:remove[@"where"] isNumber:[remove[@"identifier"] integerValue]];
+        dispatch_async(_context.dispatchQueue, ^{
+            [_context deleteFromTable:remove[@"subtable"] where:remove[@"where"] isNumber:[remove[@"identifier"] integerValue]];
         });
     }
 
     for (NSDictionary *insert in actions[@"insert"]) {
-        dispatch_async(context.dispatchQueue, ^{
+        dispatch_async(_context.dispatchQueue, ^{
             NSDictionary *values = insert[@"values"];
             // fix -1 identifier if object is saved the first time
             if ([values[@"objectID"] integerValue] < 0) {
                 values = [values mutableCopy];
                 [(NSMutableDictionary *)values setObject:@((NSInteger)identifier) forKey:@"objectID"];
             }
-            [context insertObjectInto:insert[@"subtable"] values:values];
+            [_context insertObjectInto:insert[@"subtable"] values:values];
         });
     }
 
@@ -312,8 +326,8 @@
 
 - (BOOL)loadFromContext {
     __block NSDictionary *data;
-    dispatch_sync(context.dispatchQueue, ^{
-        data = [context fetchFromTable:[self tableName] pkid:identifier];
+    dispatch_sync(_context.dispatchQueue, ^{
+        data = [_context fetchFromTable:[self tableName] pkid:identifier];
     });
     if (!data) {
         return NO;
@@ -348,8 +362,8 @@
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 
             __block NSArray *array;
-            dispatch_sync(context.dispatchQueue, ^{
-                array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
+            dispatch_sync(_context.dispatchQueue, ^{
+                array = [_context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
             });
 			NSSortDescriptor *sorter = [[NSSortDescriptor alloc] initWithKey:@"sortorder" ascending:YES];
 			array = [array sortedArrayUsingDescriptors:@[sorter]];
@@ -358,7 +372,7 @@
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
                 if (content) {
-                    id unarchived = [DSTCustomUnArchiver unarchiveObjectWithData:content inContext:context];
+                    id unarchived = [DSTCustomUnArchiver unarchiveObjectWithData:content inContext:_context parent:self];
                     if (unarchived) {
                         [result addObject:unarchived];
                     }
@@ -374,14 +388,14 @@
 			NSString *subTableName = [NSString stringWithFormat:@"%@_%@", [self tableName], propertyName];
 
             __block NSArray *array;
-            dispatch_sync(context.dispatchQueue, ^{
-                array = [context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
+            dispatch_sync(_context.dispatchQueue, ^{
+                array = [_context fetchFromTable:subTableName where:@"objectID" isNumber:identifier];
             });
 			NSMutableDictionary *result = [[NSMutableDictionary alloc] initWithCapacity:[array count]];
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
 				NSString *key = [data objectForKey:@"key"];
-				[result setObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:context] forKey:key];
+				[result setObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:_context parent:self] forKey:key];
 			}
             if ([propertyType hasPrefix:@"@\"NSMutable"]) {
                 [self setValue:[NSMutableDictionary dictionaryWithDictionary:result] forKey:propertyName];
@@ -391,13 +405,13 @@
 		} else if ([propertyType hasPrefix:@"@"]) {
 			// an object besides of string, array or dictionary (NSKeyedArchiver used to encode)
             if (![[data objectForKey:[propertyName lowercaseString]] isKindOfClass:[NSNull class]]) {
-                [self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
+                [self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:_context parent:self] forKey:propertyName];
             } else {
                 [self setValue:nil forKey:propertyName];
             }
 		} else if ([propertyType hasPrefix:@"{"]) {
 			// here we have to handle structs, we currently can only do those that have NSValue support
-			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:context] forKey:propertyName];
+			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:_context parent:self] forKey:propertyName];
 		} else {
 			Log(@"Could not decode type %@, so will not try to", propertyType);
 		}
@@ -416,7 +430,7 @@
 }
 
 - (void)createTable {
-    if ([context isReadonly]) {
+    if ([_context isReadonly]) {
 		FailLog(@"Database is read only!");
 		return;
     }
@@ -443,8 +457,8 @@
 			NSDictionary *columns = @{@"objectID" : @"INTEGER", // foreign key
 									  @"sortOrder": @"INTEGER",
 									  @"data"     : @"BLOB"};
-            dispatch_async(context.dispatchQueue, ^{
-                [context createTable:subTableName columns:columns version:[self version]];
+            dispatch_async(_context.dispatchQueue, ^{
+                [_context createTable:subTableName columns:columns version:[self version]];
             });
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if (([propertyType hasPrefix:@"@\"NSDictionary"]) || ([propertyType hasPrefix:@"@\"NSMutableDictionary"])) {
@@ -453,8 +467,8 @@
 			NSDictionary *columns = @{@"objectID": @"INTEGER", // foreign key
 									  @"key"     : @"TEXT",
 									  @"data"    : @"BLOB"};
-            dispatch_async(context.dispatchQueue, ^{
-                [context createTable:subTableName columns:columns version:[self version]];
+            dispatch_async(_context.dispatchQueue, ^{
+                [_context createTable:subTableName columns:columns version:[self version]];
             });
 			[propertiesSQL setObject:@"INTEGER" forKey:propertyName];
 		} else if ([propertyType hasPrefix:@"@"]) {
@@ -468,8 +482,8 @@
 		}
 	}
 
-    dispatch_async(context.dispatchQueue, ^{
-        [context createTable:[self tableName] columns:propertiesSQL version:[self version]];
+    dispatch_async(_context.dispatchQueue, ^{
+        [_context createTable:[self tableName] columns:propertiesSQL version:[self version]];
     });
 }
 
@@ -530,7 +544,7 @@
 }
 
 + (NSArray *)backReferencingProperties {
-    return @[];
+    return @[ @"context" ];
 }
 
 + (void)removeObjectFromAssociatedSubTables:(NSInteger)identifier context:(DSTPersistenceContext *)context {
@@ -578,8 +592,12 @@
     });
 }
 
+- (NSInteger)identifier {
+    return [self save];
+}
+
 - (NSInteger)save {
-    if ([context isReadonly]) {
+    if ([_context isReadonly]) {
 		FailLog(@"Database is read only!");
 		return -1;
     }
@@ -596,15 +614,15 @@
         // execute the query itself in a background thread
         BOOL updateNeccessary = YES;
         if (identifier < 0) {
-            dispatch_sync(context.dispatchQueue, ^{
-                identifier = [context insertObjectInto:[self tableName] values:data];
-                [context registerObject:self];
+            dispatch_sync(_context.dispatchQueue, ^{
+                identifier = [_context insertObjectInto:[self tableName] values:data];
+                [_context registerObject:self];
             });
             updateNeccessary = NO;
         }
 
-        dispatch_sync(context.dispatchQueue, ^{
-            [context updateTable:[self tableName] pkid:identifier values:data];
+        dispatch_sync(_context.dispatchQueue, ^{
+            [_context updateTable:[self tableName] pkid:identifier values:data];
             [self processSubTables:subtableActions];
             dirty = NO;
         });

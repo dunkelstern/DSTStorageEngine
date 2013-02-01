@@ -39,11 +39,10 @@
 @optional
 - (void)didLoadFromContext;
 + (NSArray *)backReferencingProperties;
++ (NSString *)parentAttribute;
 @end
 
-@interface DSTPersistentObject : NSObject <NSCoding, DSTPersistentObjectSubclass> {
-    DSTPersistenceContext *context;
-}
+@interface DSTPersistentObject : NSObject <NSCoding, DSTPersistentObjectSubclass>
 
 + (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier;
 
@@ -55,7 +54,7 @@
 
 @property (nonatomic, readonly) NSInteger identifier;
 @property (nonatomic, readonly, getter = isDirty) BOOL dirty;
-@property (nonatomic, readonly) DSTPersistenceContext *context;
+@property (nonatomic, strong, readonly) DSTPersistenceContext *context;
 
 - (NSString *)tableName;
 + (NSString *)tableName;

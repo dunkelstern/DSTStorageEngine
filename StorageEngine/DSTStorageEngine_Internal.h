@@ -31,6 +31,9 @@
 
 #import <sqlite3.h>
 
+#define DST_LAZY_LOADING 0
+#define DST_BACKGROUND_LOADING 0
+
 #define LogEntry(_msg) [NSString stringWithFormat:@"%s:%d %@", __PRETTY_FUNCTION__, __LINE__, _msg]
 
 #ifdef Log
@@ -55,6 +58,7 @@
 	#define Log(_msg, ...) NSLog(LogEntry(_msg), __VA_ARGS__)
 #endif
 
+#import "DSTPersistenceContext.h"
 @interface DSTPersistenceContext () {
     NSMutableArray *registeredObjects;
 	NSMutableArray *tables;
@@ -73,4 +77,9 @@
 
 - (NSDictionary *)fetchFromTable:(NSString *)name pkid:(NSUInteger)pkid;
 - (NSArray *)fetchFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number;
+@end
+
+#import "DSTPersistentObject.h"
+@interface DSTPersistentObject ()
+@property (nonatomic, strong, readwrite) DSTPersistenceContext *context;
 @end

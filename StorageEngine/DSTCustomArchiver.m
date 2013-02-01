@@ -30,18 +30,14 @@
  */
 
 #import "DSTCustomArchiver.h"
-@interface DSTCustomUnArchiver () {
-    DSTPersistenceContext *context;
-}
-@end
 
 @implementation DSTCustomUnArchiver
-@synthesize context;
 
-- (id)initForReadingWithData:(NSData *)data inContext:(DSTPersistenceContext *)theContext {
+- (id)initForReadingWithData:(NSData *)data inContext:(DSTPersistenceContext *)theContext parent:(id)parent {
     self = [super initForReadingWithData:data];
     if (self) {
-        context = theContext;
+        _context = theContext;
+        _parent = parent;
     }
     return self;
 }
@@ -50,8 +46,8 @@
     @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"You have to supply a context" userInfo:nil];
 }
 
-+ (id)unarchiveObjectWithData:(NSData *)data inContext:(DSTPersistenceContext *)context {
-	DSTCustomUnArchiver *unarchiver = [[DSTCustomUnArchiver alloc] initForReadingWithData:data inContext:context];
++ (id)unarchiveObjectWithData:(NSData *)data inContext:(DSTPersistenceContext *)context parent:(id)parent {
+	DSTCustomUnArchiver *unarchiver = [[DSTCustomUnArchiver alloc] initForReadingWithData:data inContext:context parent:parent];
 	return [unarchiver decodeObjectForKey:@"root"];
 }
 
