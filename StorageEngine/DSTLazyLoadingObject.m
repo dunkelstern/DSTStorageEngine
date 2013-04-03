@@ -71,8 +71,33 @@
     if (proxiedObject) {
         return [proxiedObject class];
     }
-    return [DSTLazyLoadingObject class];
+    return realClass;
 }
+
+- (BOOL)isKindOfClass:(Class)aClass {
+    return [realClass isSubclassOfClass:aClass];
+}
+
+- (BOOL)isMemberOfClass:(Class)aClass {
+    return aClass == realClass;
+}
+
+- (Class)superclass {
+    return [realClass superclass];
+}
+
+- (BOOL)respondsToSelector:(SEL)aSelector {
+    return [realClass respondsToSelector:aSelector];
+}
+
+#pragma mark - Special Logic to speed up saves
+
+- (void)save {
+    if(proxiedObject) {
+        [proxiedObject save];
+    }
+}
+
 #pragma mark - Internal
 
 - (id)loadProxiedObject {
