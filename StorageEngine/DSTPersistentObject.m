@@ -452,7 +452,7 @@
 			NSMutableArray *result = [[NSMutableArray alloc] initWithCapacity:[array count]];
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
-                if (content) {
+                if ((content) && (![content isKindOfClass:[NSNull class]])) {
                     id unarchived = [DSTCustomUnArchiver unarchiveObjectWithData:content inContext:_context parent:self];
                     if (unarchived) {
                         [result addObject:unarchived];
@@ -476,7 +476,9 @@
 			for (NSDictionary *data in array) {
 				NSData *content = [data objectForKey:@"data"];
 				NSString *key = [data objectForKey:@"key"];
-				[result setObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:_context parent:self] forKey:key];
+                if ((content) && (![content isKindOfClass:[NSNull class]])) {
+                    [result setObject:[DSTCustomUnArchiver unarchiveObjectWithData:content inContext:_context parent:self] forKey:key];
+                }
 			}
             if ([propertyType hasPrefix:@"@\"NSMutable"]) {
                 [self setValue:[NSMutableDictionary dictionaryWithDictionary:result] forKey:propertyName];
