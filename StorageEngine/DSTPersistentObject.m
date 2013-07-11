@@ -44,10 +44,7 @@
 #import "DSTPersistentObject.h"
 #import "DSTCustomArchiver.h"
 #import "DSTStorageEngine_Internal.h"
-
-#if DST_LAZY_LOADING
-# import "DSTLazyLoadingObject.h"
-#endif
+#import "DSTLazyLoadingObject.h"
 
 @interface DSTPersistentObject () {
     NSInteger identifier;
@@ -73,6 +70,76 @@
 @synthesize dirty;
 
 #pragma mark - Setup
+
++ (BOOL)checkMigrationWithContext:(DSTPersistenceContext *)context {
+    // check version
+    __block NSInteger version;
+    dispatch_sync(context.dispatchQueue, ^{
+        version = [context versionForTable:[self tableName]];
+    });
+    if (version < 0) return NO;
+    if ([self version] != version) {
+        DSTPersistenceContext *fromContext = [[DSTPersistenceContext alloc] initWithDatabase:[context databaseFile] readonly:YES];
+        [fromContext setLazyLoadingEnabled:NO];
+
+        DSTPersistenceContext *toContext = [DSTPersistenceContext duplicateContextInTemporaryFile:context];
+        [toContext beginTransaction];
+
+        NSArray *pkids = [fromContext pkidsForTable:[self tableName]];
+        for (NSNumber *pkid in pkids) {
+            DSTPersistentObject *obj = (DSTPersistentObject *)[[[self class] alloc] initForMigrationWithIdentifier:[pkid integerValue] forContext:fromContext];
+
+            // drop table at first run and recreate
+            if (pkids[0] == pkid) {
+                [obj setContext:toContext];
+                [toContext deleteTable:[self tableName]];
+                [obj createTable];
+            }
+
+            // save all loaded objects in new context and deregister them from old context
+            NSArray *regObjs = [fromContext registeredObjects];
+            for (DSTPersistentObject *o in regObjs) {
+                [o markAsChanged];
+                [o setContext:toContext];
+                [toContext registerObject:o];
+                [fromContext deRegisterObject:o];
+            }
+
+            // migrate and save
+            [obj migrateFromVersion:version additionalData:nil];
+            for (DSTPersistentObject *o in regObjs) {
+                [o save];
+            }
+        }
+        [toContext endTransaction];
+        [DSTPersistenceContext exchangeContext:context fromTemporaryContext:toContext];
+    } else {
+        // no migration
+        return NO;
+    }
+    return YES;
+}
+
+- (DSTPersistentObject *)initForMigrationWithIdentifier:(NSInteger)theIdentifier forContext:(DSTPersistenceContext *)theContext {
+	if (![theContext tableExists:[self tableName]]) {
+		return nil; // bail out
+	}
+
+    self = [super init];
+    if (self) {
+        _context = theContext;
+		identifier = theIdentifier;
+
+        if (![self loadFromContext]) {
+            return nil;
+        }
+        [_context registerObject:self];
+
+        dirty = YES;
+    }
+    return self;	
+}
+
 - (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)theContext {
     if ([theContext isReadonly]) {
 		FailLog(@"Database is read only!");
@@ -113,12 +180,19 @@
     if (self) {
         _context = theContext;
 		identifier = theIdentifier;
+
+        BOOL migration = [[self class] checkMigrationWithContext:_context];
+
         if (![self loadFromContext]) {
             return nil;
         }
         [_context registerObject:self];
 
-		dirty = NO;
+        if (migration) {
+            dirty = YES;
+        } else {
+            dirty = NO;
+        }
 		[self addObserver:self
 			   forKeyPath:@"dirty"
 				  options:0
@@ -153,10 +227,11 @@
     if (![coder isKindOfClass:[DSTCustomUnArchiver class]]) {
         @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"PersistentObject can only be unarchived by CustomArchiver" userInfo:nil];
     }
-#if DST_LAZY_LOADING
-    return self;
-#else
     DSTCustomUnArchiver *archiver = (DSTCustomUnArchiver *)coder;
+
+    if (archiver.context.lazyLoadingEnabled) {
+        return self;
+    }
     identifier = [archiver decodeIntegerForKey:@"identifier"];
     
 	self = [self initWithIdentifier:identifier fromContext:[archiver context]];
@@ -168,15 +243,18 @@
         }
     }
     return self;
-#endif
 }
 
-#if DST_LAZY_LOADING
 - (id)awakeAfterUsingCoder:(NSCoder *)aDecoder {
-    DSTLazyLoadingObject *lazy = [[DSTLazyLoadingObject alloc] initWithClass:self.class coder:aDecoder];
-    return (DSTPersistentObject *)lazy;
+    DSTCustomUnArchiver *archiver = (DSTCustomUnArchiver *)aDecoder;
+    if (archiver.context.lazyLoadingEnabled) {
+        DSTLazyLoadingObject *lazy = [[DSTLazyLoadingObject alloc] initWithClass:self.class coder:aDecoder];
+        [[archiver context] registerObject:self];
+        return (DSTPersistentObject *)lazy;
+    } else {
+        return [super awakeAfterUsingCoder:aDecoder];
+    }
 }
-#endif
 
 - (void)encodeWithCoder:(NSCoder *)coder {
     if (identifier < 0) {
@@ -193,6 +271,9 @@
 }
 
 #pragma mark - Internal API
+- (NSUInteger)version {
+	return [[self class] version];
+}
 
 - (NSDictionary *)serialize {
 	NSDictionary *properties = [self fetchAllProperties];
@@ -612,13 +693,11 @@
         NSDictionary *subtableActions = [self prepareSubTables];
 
         // execute the query itself in a background thread
-        BOOL updateNeccessary = YES;
         if (identifier < 0) {
             dispatch_sync(_context.dispatchQueue, ^{
                 identifier = [_context insertObjectInto:[self tableName] values:data];
                 [_context registerObject:self];
             });
-            updateNeccessary = NO;
         }
 
         dispatch_sync(_context.dispatchQueue, ^{
@@ -648,11 +727,6 @@
     if (myImp == classImp) {
         mustOverride();
     }
-}
-
-- (NSUInteger)version {
-	mustOverride();
-	return 0;
 }
 
 - (void)didLoadFromContext {

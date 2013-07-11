@@ -31,7 +31,6 @@
 
 #import <sqlite3.h>
 
-#define DST_LAZY_LOADING 0
 #define DST_BACKGROUND_LOADING 0
 
 #define LogEntry(_msg) [NSString stringWithFormat:@"%s:%d %@", __PRETTY_FUNCTION__, __LINE__, _msg]
@@ -65,6 +64,9 @@
 	sqlite3 *dbHandle;
     BOOL transactionRunning;
 }
++ (DSTPersistenceContext *)duplicateContextInTemporaryFile:(DSTPersistenceContext *)context;
++ (void)exchangeContext:(DSTPersistenceContext *)oldContext fromTemporaryContext:(DSTPersistenceContext *)tempContext;
+
 - (void)registerObject:(DSTPersistentObject *)object;
 - (void)deRegisterObject:(DSTPersistentObject *)object;
 
@@ -74,9 +76,15 @@
 - (NSUInteger)insertObjectInto:(NSString *)name values:(NSDictionary *)values;
 - (void)deleteFromTable:(NSString *)name pkid:(NSUInteger)pkid;
 - (void)deleteFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number;
+- (void)deleteFromTable:(NSString *)name where:(NSString *)fieldName isString:(NSString *)string;
 
 - (NSDictionary *)fetchFromTable:(NSString *)name pkid:(NSUInteger)pkid;
 - (NSArray *)fetchFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number;
+- (NSArray *)fetchAllFromTable:(NSString *)name;
+
+- (NSInteger)versionForTable:(NSString *)tableName;
+- (void)deleteTable:(NSString *)name;
+- (NSArray *)pkidsForTable:(NSString *)tableName;
 @end
 
 #import "DSTPersistentObject.h"

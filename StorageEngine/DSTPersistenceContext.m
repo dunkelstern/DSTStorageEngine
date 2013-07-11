@@ -36,6 +36,41 @@
 
 @implementation DSTPersistenceContext
 
++ (DSTPersistenceContext *)duplicateContextInTemporaryFile:(DSTPersistenceContext *)context {
+    NSString *dbFile = [context databaseFile];
+
+    CFUUIDRef uuid = CFUUIDCreate(NULL);
+    CFStringRef uuidString = CFUUIDCreateString(NULL, uuid);
+    CFRelease(uuid);
+    NSString *result = [NSString stringWithString:(__bridge NSString *)uuidString];
+    CFRelease(uuidString);
+
+    NSString *tmpFile = [dbFile stringByAppendingFormat:@".migration_%@.sqlite", result];
+    NSError *error = nil;
+    [[NSFileManager defaultManager] copyItemAtPath:dbFile toPath:tmpFile error:&error];
+    if (error) {
+        FailLog(@"Could not duplicate database file: %@", error);
+        return nil;
+    }
+    return [[DSTPersistenceContext alloc] initWithDatabase:tmpFile readonly:NO];
+}
+
++ (void)exchangeContext:(DSTPersistenceContext *)oldContext fromTemporaryContext:(DSTPersistenceContext *)tempContext {
+    NSString *dbFile = [oldContext databaseFile];
+    NSString *tmpFile = [tempContext databaseFile];
+
+    NSError *error = nil;
+    [[NSFileManager defaultManager] removeItemAtPath:dbFile error:&error];
+    if (error) {
+        FailLog(@"Could not delete old database file: %@", error);
+    }
+
+    [[NSFileManager defaultManager] moveItemAtPath:tmpFile toPath:dbFile error:&error];
+    if (error) {
+        FailLog(@"Could not move temp database file: %@", error);
+    }
+}
+
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName {
     return [self initWithDatabase:dbName readonly:NO];
 }
@@ -46,6 +81,7 @@
         registeredObjects = [[NSMutableArray alloc] init];
 		dbHandle = NULL;
         _readonly = readonly;
+        _lazyLoadingEnabled = YES;
 
         _dispatchQueue = dispatch_queue_create("de.dunkelstern.dstpersistencecontext", DISPATCH_QUEUE_SERIAL);
 
@@ -69,6 +105,7 @@
 			dbHandle = NULL;
 			return nil;
 		}
+        sqlite3_busy_timeout(dbHandle, 3000);
 
 		char *errmsg = NULL;
 		if (sqlite3_exec(dbHandle, "PRAGMA encoding = \"UTF-8\"",  NULL, NULL, &errmsg) != SQLITE_OK) {
@@ -227,6 +264,9 @@
 		return NO;
 	}
 	
+    // if version table entry already there delete it
+    [self deleteFromTable:@"storageengine_versions" where:@"tablename" isString:name];
+
 	// insert into version table
 	NSString *versionQuery = [NSString stringWithFormat:@"INSERT INTO storageengine_versions ( tablename, version ) VALUES ( \"%@\", %u )", [name lowercaseString], version];
 	if (sqlite3_exec(dbHandle, [versionQuery UTF8String],  NULL, NULL, &errmsg) != SQLITE_OK) {
@@ -336,6 +376,78 @@
 	sqlite3_finalize(stmt);	
 }
 
+- (void)deleteFromTable:(NSString *)name where:(NSString *)fieldName isString:(NSString *)string {
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return;
+    }
+	sqlite3_stmt *stmt = NULL;
+	NSString *fieldPlaceholder = [NSString stringWithFormat:@":%@", [fieldName lowercaseString]];
+
+	// prepare statement
+	NSString *sql = [NSString stringWithFormat:@"DELETE FROM %@ WHERE %@ = %@", [name lowercaseString], [fieldName lowercaseString], fieldPlaceholder];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare delete statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, [fieldPlaceholder UTF8String]);
+	sqlite3_bind_text(stmt, parameterIndex, [string UTF8String], strlen([string UTF8String]), SQLITE_TRANSIENT);
+
+	// execute statement
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		Log(@"Could not execute delete statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	sqlite3_finalize(stmt);
+}
+
+- (void)deleteTable:(NSString *)name {
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return;
+    }
+    sqlite3_stmt *stmt = NULL;
+
+	// fetch from table
+	NSString *sql = [NSString stringWithFormat:@"DROP TABLE %@", [name lowercaseString]];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare drop table statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+
+	// execute statement
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		Log(@"Could not execute drop table statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	sqlite3_finalize(stmt);
+
+	stmt = NULL;
+
+    sql = @"DELETE FROM storageengine_versions WHERE tablename = :tablename";
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare delete statement: %s", sqlite3_errmsg(dbHandle));
+		return;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, ":tablename");
+	sqlite3_bind_text(stmt, parameterIndex, [[name lowercaseString] UTF8String], strlen([[name lowercaseString] UTF8String]), SQLITE_TRANSIENT);
+
+	int result = sqlite3_step(stmt);
+	if (result != SQLITE_DONE) {
+		Log(@"Could not execute delete statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	sqlite3_finalize(stmt);
+}
+
 - (void)updateTable:(NSString *)name pkid:(NSUInteger)pkid values:(NSDictionary *)values {
     if (_readonly) {
 		FailLog(@"Database is read only!");
@@ -363,9 +475,35 @@
 		sqlite3_finalize(stmt);
 		return;
 	}
+    if (sqlite3_changes(dbHandle) < 1) {
+        NSUInteger newPkid = [self insertObjectInto:name values:values];
+        [self updateTable:name oldPkid:newPkid newPkid:pkid];
+    }
+
 	sqlite3_finalize(stmt);
 }
 
+- (void)updateTable:(NSString *)name oldPkid:(NSUInteger)pkid newPkid:(NSUInteger)newPkid {
+    if (_readonly) {
+		FailLog(@"Database is read only!");
+		return;
+    }
+	NSString *query = [NSString stringWithFormat:@"UPDATE %@ SET id = %u WHERE id = %u", [name lowercaseString], newPkid, pkid];
+	DebugLog(@"Query: %@", query);
+	sqlite3_stmt *stmt = NULL;
+	if (sqlite3_prepare_v2(dbHandle, [query UTF8String], strlen([query UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare update statement: %s", sqlite3_errmsg(dbHandle));
+		return;
+	}
+
+	int result = sqlite3_step(stmt);
+	if (result != SQLITE_DONE) {
+		Log(@"Could not execute update statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return;
+	}
+	sqlite3_finalize(stmt);
+}
 
 - (NSDictionary *)fetchFromTable:(NSString *)name pkid:(NSUInteger)pkid {
 	sqlite3_stmt *stmt = NULL;
@@ -389,6 +527,37 @@
 	NSDictionary *result = [self convertResultToDictionary:stmt];
 	sqlite3_finalize(stmt);
 	return result;
+}
+
+- (NSArray *)fetchAllFromTable:(NSString *)name {
+	sqlite3_stmt *stmt = NULL;
+
+	// fetch from table
+	NSString *sql = [NSString stringWithFormat:@"SELECT * FROM %@", [name lowercaseString]];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+	}
+
+    // aggregate all data
+    NSMutableArray *result = [NSMutableArray array];
+    int ret = sqlite3_step(stmt);
+	while (ret == SQLITE_ROW) {
+        [result addObject:[self convertResultToDictionary:stmt]];
+        ret = sqlite3_step(stmt);
+	}
+
+    // throw error message
+    if (ret != SQLITE_DONE) {
+        Log(@"Error while querying: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+    }
+
+	sqlite3_finalize(stmt);
+	return [NSArray arrayWithArray:result];
 }
 
 - (NSArray *)fetchFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number {
@@ -428,6 +597,73 @@
 
 - (void)deRegisterObject:(DSTPersistentObject *)object {
     [registeredObjects removeObject:object];
+}
+
+- (NSInteger)versionForTable:(NSString *)tableName {
+	sqlite3_stmt *stmt = NULL;
+
+	// fetch from table
+	NSString *sql = @"SELECT * FROM storageengine_versions WHERE tablename = :tablename";
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return -1;
+	}
+	int parameterIndex = sqlite3_bind_parameter_index(stmt, ":tablename");
+	sqlite3_bind_text(stmt, parameterIndex, [[tableName lowercaseString] UTF8String], strlen([[tableName lowercaseString] UTF8String]), SQLITE_TRANSIENT);
+	if (sqlite3_step(stmt) != SQLITE_ROW) {
+		Log(@"Could not execute fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return -1;
+	}
+
+	NSDictionary *result = [self convertResultToDictionary:stmt];
+	sqlite3_finalize(stmt);
+	return [result[@"version"] integerValue];
+}
+
+- (NSArray *)pkidsForTable:(NSString *)tableName {
+	sqlite3_stmt *stmt = NULL;
+
+	// fetch from table
+	NSString *sql = [NSString stringWithFormat:@"SELECT id FROM %@", [tableName lowercaseString]];
+	DebugLog(@"Query: %@", sql);
+	if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+		Log(@"Could not prepare fetch statement: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+	}
+
+    // aggregate all data
+    NSMutableArray *result = [NSMutableArray array];
+    int ret = sqlite3_step(stmt);
+	while (ret == SQLITE_ROW) {
+        int index = -1;
+        if (index < 0) {
+            for (int i = 0; i < sqlite3_column_count(stmt); i++) {
+                NSString *key = @(sqlite3_column_name(stmt, i));
+                if ([key isEqualToString:@"id"]) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        [result addObject:@(sqlite3_column_int(stmt,index))];
+        ret = sqlite3_step(stmt);
+	}
+
+    // throw error message
+    if (ret != SQLITE_DONE) {
+        Log(@"Error while querying: %s", sqlite3_errmsg(dbHandle));
+		sqlite3_finalize(stmt);
+		return nil;
+    }
+
+	sqlite3_finalize(stmt);
+
+	return [NSArray arrayWithArray:result];
+
 }
 
 #pragma mark - Private API
@@ -474,6 +710,8 @@
 		} else if ([value isKindOfClass:[NSValue class]]) {
 			NSData *data = [NSKeyedArchiver archivedDataWithRootObject:value];
 			result = sqlite3_bind_blob(stmt, parameterIndex, [data bytes], [data length], SQLITE_TRANSIENT);
+        } else if ([value isKindOfClass:[NSNull class]]) {
+            result = sqlite3_bind_null(stmt, parameterIndex);
 		} else {
 			FailLog(@"Could not determine data type for %@", key);
 		}

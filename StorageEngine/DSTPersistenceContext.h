@@ -38,6 +38,7 @@
 @property (nonatomic, assign) dispatch_queue_t dispatchQueue;
 @property (nonatomic, strong, readonly) NSString *databaseFile;
 @property (nonatomic, assign, readonly, getter = isReadonly) BOOL readonly;
+@property (nonatomic, assign) BOOL lazyLoadingEnabled;
 
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName;
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName readonly:(BOOL)readonly;

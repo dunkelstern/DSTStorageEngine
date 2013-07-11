@@ -34,12 +34,19 @@
 
 @protocol DSTPersistentObjectSubclass <NSObject, NSCoding>
 - (void)setDefaults;
-- (NSUInteger)version;
++ (NSUInteger)version;
 
 @optional
 - (void)didLoadFromContext;
 + (NSArray *)backReferencingProperties;
 + (NSString *)parentAttribute;
+
+// this will be called for migration instead of didLoadFromContext,
+// tables are updated automatically, data that was in deleted properties
+// will be in "additionalData"
+// BEWARE: If you change a datatype for a property SQLite type affinity will convert
+// some types for you (read http://www.sqlite.org/datatype3.html for information)
+- (void)migrateFromVersion:(NSUInteger)version additionalData:(NSDictionary *)data;
 @end
 
 @interface DSTPersistentObject : NSObject <NSCoding, DSTPersistentObjectSubclass>
