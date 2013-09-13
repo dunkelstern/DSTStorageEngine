@@ -97,7 +97,7 @@
             }
 
             // save all loaded objects in new context and deregister them from old context
-            NSArray *regObjs = [fromContext registeredObjects];
+            NSSet *regObjs = [fromContext registeredObjects];
             for (DSTPersistentObject *o in regObjs) {
                 [o markAsChanged];
                 [o setContext:toContext];
@@ -204,12 +204,15 @@
     return self;	
 }
 
+- (void)invalidate {
+    [_context deRegisterObject:self];
+    _context = nil;
+}
 
 - (void)dealloc {
     if (observer) {
         [self removeObserver:self forKeyPath:@"dirty"];
     }
-    [_context deRegisterObject:self];
 }
 
 + (NSSet *)keyPathsForValuesAffectingDirty {
@@ -249,7 +252,6 @@
     DSTCustomUnArchiver *archiver = (DSTCustomUnArchiver *)aDecoder;
     if (archiver.context.lazyLoadingEnabled) {
         DSTLazyLoadingObject *lazy = [[DSTLazyLoadingObject alloc] initWithClass:self.class coder:aDecoder];
-        [[archiver context] registerObject:self];
         return (DSTPersistentObject *)lazy;
     } else {
         return [super awakeAfterUsingCoder:aDecoder];
@@ -676,7 +678,11 @@
 }
 
 - (NSInteger)identifier {
-    return [self save];
+    if (identifier < 0) {
+        return [self save];
+    } else {
+        return identifier;
+    }
 }
 
 - (NSInteger)save {

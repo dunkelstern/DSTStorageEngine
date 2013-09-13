@@ -15,7 +15,7 @@
     DSTPersistentObject *proxiedObject;
     Class realClass;
     NSInteger identifier;
-    DSTPersistenceContext *context;
+    __weak DSTPersistenceContext *context;
     id parent;
 }
 @end
@@ -26,9 +26,13 @@
     realClass = class;
     DSTCustomUnArchiver *decoder = (DSTCustomUnArchiver *)coder;
     identifier = [decoder decodeIntegerForKey:@"identifier"];
-    proxiedObject = nil;
     context = [decoder context];
+    if (![context objectExists:identifier inTable:[realClass tableName]]) {
+        return nil;
+    }
+    proxiedObject = nil;
     parent = [decoder parent];
+    [context registerLazyObject:self];
     return self;
 }
 
@@ -98,16 +102,37 @@
     }
 }
 
+- (void)invalidate {
+    if (proxiedObject) {
+        [proxiedObject invalidate];
+    }
+    [context deRegisterLazyObject:self];
+    parent = nil;
+    proxiedObject = nil;
+    context = nil;
+}
+
+- (NSString *)tableName {
+    return [realClass tableName];
+}
+
+- (NSInteger)identifier {
+    return identifier;
+}
+
+- (id)parent {
+    return parent;
+}
+
 #pragma mark - Internal
 
 - (id)loadProxiedObject {
     DSTPersistentObject *obj = [(DSTPersistentObject *)[realClass alloc] initWithIdentifier:identifier fromContext:context];
-    [context registerObject:obj];
-    [obj setContext:context];
     [obj awakeAfterUsingCoder:nil];
     if ([realClass respondsToSelector:@selector(parentAttribute)]) {
         [obj setValue:parent forKey:[realClass parentAttribute]];
     }
+    [context registerObject:obj];
     return obj;
 }
 

@@ -41,6 +41,9 @@
 + (NSArray *)backReferencingProperties;
 + (NSString *)parentAttribute;
 
+- (NSString *)tableName;
++ (NSString *)tableName;
+
 // this will be called for migration instead of didLoadFromContext,
 // tables are updated automatically, data that was in deleted properties
 // will be in "additionalData"
@@ -52,6 +55,7 @@
 @interface DSTPersistentObject : NSObject <NSCoding, DSTPersistentObjectSubclass>
 
 + (void)deleteObjectFromContext:(DSTPersistenceContext *)context identifier:(NSInteger)identifier;
+- (void)invalidate;
 
 - (DSTPersistentObject *)initWithContext:(DSTPersistenceContext *)context;
 - (DSTPersistentObject *)initWithIdentifier:(NSInteger)identifier fromContext:(DSTPersistenceContext *)context;
@@ -62,8 +66,5 @@
 @property (nonatomic, readonly) NSInteger identifier;
 @property (nonatomic, readonly, getter = isDirty) BOOL dirty;
 @property (nonatomic, strong, readonly) DSTPersistenceContext *context;
-
-- (NSString *)tableName;
-+ (NSString *)tableName;
 
 @end

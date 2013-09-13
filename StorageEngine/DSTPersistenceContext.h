@@ -42,7 +42,7 @@
 
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName;
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName readonly:(BOOL)readonly;
-- (NSArray *)registeredObjects;
+- (NSSet *)registeredObjects;
 - (void)optimize;
 - (void)beginTransaction;
 - (void)endTransaction;

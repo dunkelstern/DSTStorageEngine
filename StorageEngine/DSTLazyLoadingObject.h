@@ -10,4 +10,8 @@
 
 @interface DSTLazyLoadingObject : NSProxy
 - (DSTLazyLoadingObject *)initWithClass:(Class)class coder:(NSCoder *)coder;
+- (NSString *)tableName;
+- (NSInteger)identifier;
+- (void)invalidate;
+- (id)parent;
 @end

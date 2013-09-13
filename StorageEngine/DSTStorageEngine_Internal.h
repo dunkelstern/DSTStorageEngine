@@ -57,9 +57,12 @@
 	#define Log(_msg, ...) NSLog(LogEntry(_msg), __VA_ARGS__)
 #endif
 
+#import "DSTLazyLoadingObject.h"
+
 #import "DSTPersistenceContext.h"
 @interface DSTPersistenceContext () {
-    NSMutableArray *registeredObjects;
+    NSMutableSet *registeredObjects;
+    NSMutableSet *lazyObjects;
 	NSMutableArray *tables;
 	sqlite3 *dbHandle;
     BOOL transactionRunning;
@@ -70,7 +73,12 @@
 - (void)registerObject:(DSTPersistentObject *)object;
 - (void)deRegisterObject:(DSTPersistentObject *)object;
 
+- (void)registerLazyObject:(DSTLazyLoadingObject *)object;
+- (void)deRegisterLazyObject:(DSTLazyLoadingObject *)object;
+
+
 - (BOOL)tableExists:(NSString *)name;
+- (BOOL)objectExists:(NSInteger)pkid inTable:(NSString *)table;
 - (BOOL)createTable:(NSString *)name columns:(NSDictionary *)columns version:(NSUInteger)version;
 - (void)updateTable:(NSString *)name pkid:(NSUInteger)pkid values:(NSDictionary *)values;
 - (NSUInteger)insertObjectInto:(NSString *)name values:(NSDictionary *)values;

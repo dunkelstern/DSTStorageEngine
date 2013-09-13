@@ -34,10 +34,10 @@
 
 @interface DSTCustomUnArchiver : NSKeyedUnarchiver
 
-- (id)initForReadingWithData:(NSData *)data inContext:(DSTPersistenceContext *)context parent:(id)parent;
+- (id)initForReadingWithData:(NSData *)data inContext:(__weak DSTPersistenceContext *)context parent:(id)parent;
 
-+ (id)unarchiveObjectWithData:(NSData *)data inContext:(DSTPersistenceContext *)context parent:(id)parent;
++ (id)unarchiveObjectWithData:(NSData *)data inContext:(__weak DSTPersistenceContext *)context parent:(id)parent;
 
-@property (nonatomic, readonly) DSTPersistenceContext *context;
+@property (nonatomic, weak, readonly) DSTPersistenceContext *context;
 @property (nonatomic, readonly) id parent;
 @end

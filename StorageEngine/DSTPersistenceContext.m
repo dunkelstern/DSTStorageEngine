@@ -78,7 +78,8 @@
 - (DSTPersistenceContext *)initWithDatabase:(NSString *)dbName readonly:(BOOL)readonly {
     self = [super init];
     if (self) {
-        registeredObjects = [[NSMutableArray alloc] init];
+        registeredObjects = [[NSMutableSet alloc] init];
+        lazyObjects = [[NSMutableSet alloc] init];
 		dbHandle = NULL;
         _readonly = readonly;
         _lazyLoadingEnabled = YES;
@@ -210,8 +211,12 @@
     });
 }
 
-- (NSArray *)registeredObjects {
-    return [NSArray arrayWithArray:registeredObjects];
+- (NSSet *)registeredObjects {
+    return [NSSet setWithSet:registeredObjects];
+}
+
+- (NSSet *)lazyObjects {
+    return [NSSet setWithSet:lazyObjects];
 }
 
 + (void)removeOnDiskRepresentationForDatabase:(NSString *)dbName {
@@ -234,6 +239,44 @@
 	}
 	return NO;
 }
+
+- (BOOL)objectExists:(NSInteger)pkid inTable:(NSString *)table {
+    __block BOOL result = NO;
+    void (^block)(void) = ^{
+        sqlite3_stmt *stmt = NULL;
+
+        // fetch from table
+        NSString *sql = [NSString stringWithFormat:@"SELECT count(id) FROM %@ WHERE id = :pkid", [table lowercaseString]];
+        DebugLog(@"Query: %@", sql);
+        if (sqlite3_prepare_v2(dbHandle, [sql UTF8String], strlen([sql UTF8String]), &stmt, NULL) != SQLITE_OK) {
+            Log(@"Could not prepare fetch statement: %s", sqlite3_errmsg(dbHandle));
+            sqlite3_finalize(stmt);
+            return;
+        }
+        int parameterIndex = sqlite3_bind_parameter_index(stmt, ":pkid");
+        sqlite3_bind_int(stmt, parameterIndex, pkid);
+        if (sqlite3_step(stmt) != SQLITE_ROW) {
+            Log(@"Could not execute fetch statement: %s", sqlite3_errmsg(dbHandle));
+            sqlite3_finalize(stmt);
+            return;
+        }
+        int count = sqlite3_column_int(stmt, 0);
+        sqlite3_finalize(stmt);
+        if (count == 1) {
+            result = YES;
+        }
+    };
+
+    // switch to correct queue
+    if (dispatch_get_current_queue() != self.dispatchQueue) {
+        dispatch_sync(self.dispatchQueue, block);
+    } else {
+        block();
+    }
+
+    return result;
+}
+
 
 - (BOOL)createTable:(NSString *)name columns:(NSDictionary *)columns version:(NSUInteger)version {
     if (_readonly) {
@@ -346,6 +389,30 @@
 		return;
 	}
 	sqlite3_finalize(stmt);
+
+    // find that object in registered objects and deregister it
+    DSTPersistentObject *foundObject = nil;
+    for (DSTPersistentObject *obj in registeredObjects) {
+        if ([obj.tableName isEqualToString:name] && (obj.identifier == pkid)) {
+            foundObject = obj;
+            break;
+        }
+    }
+    if (foundObject) {
+        [self deRegisterObject:foundObject];
+    }
+
+    // find that object in lazy objects and deregister it
+    DSTLazyLoadingObject *foundLazyObject = nil;
+    for (DSTLazyLoadingObject *obj in lazyObjects) {
+        if ([obj.tableName isEqualToString:name] && (obj.identifier == pkid)) {
+            foundLazyObject = obj;
+            break;
+        }
+    }
+    if (foundLazyObject) {
+        [self deRegisterLazyObject:foundLazyObject];
+    }
 }
 
 - (void)deleteFromTable:(NSString *)name where:(NSString *)fieldName isNumber:(NSUInteger)number {
@@ -596,7 +663,47 @@
 }
 
 - (void)deRegisterObject:(DSTPersistentObject *)object {
+
+    // cascade the deregister
+    NSMutableArray *cascade = [NSMutableArray array];
+    for (DSTPersistentObject *obj in registeredObjects) {
+        if ([[obj class] respondsToSelector:@selector(parentAttribute)]) {
+            NSString *parentAttribute = [[obj class] parentAttribute];
+            SEL selector = NSSelectorFromString(parentAttribute);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            DSTPersistentObject *parent = [obj performSelector:selector withObject:nil];
+#pragma clang diagnostic pop
+            if (parent == object) {
+                [cascade addObject:obj];
+            }
+        }
+    }
+    for (DSTPersistentObject *obj in cascade) {
+        [obj invalidate];
+    }
+
+    // also do for lazy objects
+    cascade = [NSMutableArray array];
+    for (DSTLazyLoadingObject *obj in lazyObjects) {
+        if (obj.parent == object) {
+            [cascade addObject:obj];
+        }
+    }
+    for (DSTLazyLoadingObject *obj in cascade) {
+        [obj invalidate];
+    }
+
     [registeredObjects removeObject:object];
+}
+
+- (void)registerLazyObject:(DSTLazyLoadingObject *)object {
+    [lazyObjects addObject:object];
+}
+
+- (void)deRegisterLazyObject:(DSTLazyLoadingObject *)object {
+    // no cascade needed because sub-objects will not have been loaded at this time
+    [lazyObjects removeObject:object];
 }
 
 - (NSInteger)versionForTable:(NSString *)tableName {
