@@ -70,6 +70,10 @@
 + (DSTPersistenceContext *)duplicateContextInTemporaryFile:(DSTPersistenceContext *)context;
 + (void)exchangeContext:(DSTPersistenceContext *)oldContext fromTemporaryContext:(DSTPersistenceContext *)tempContext;
 
+@property (nonatomic, assign) BOOL readonly;
+@property (nonatomic, strong) DSTPersistenceContext *migrationToContext;
+@property (nonatomic, strong) DSTPersistenceContext *migrationFromContext;
+
 - (void)registerObject:(DSTPersistentObject *)object;
 - (void)deRegisterObject:(DSTPersistentObject *)object;
 

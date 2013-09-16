@@ -318,7 +318,9 @@
 		sqlite3_exec(dbHandle, [[NSString stringWithFormat:@"DROP TABLE %@", name] UTF8String], NULL, NULL, &errmsg);
 		return NO;
 	}
-	
+
+    // reset internal table list
+    tables = [[NSMutableArray alloc] initWithCapacity:1];
 	[self fetchTables];
 	return YES;
 }
@@ -513,6 +515,9 @@
 		return;
 	}
 	sqlite3_finalize(stmt);
+
+    tables = [[NSMutableArray alloc] initWithCapacity:1];
+    [self fetchTables];
 }
 
 - (void)updateTable:(NSString *)name pkid:(NSUInteger)pkid values:(NSDictionary *)values {

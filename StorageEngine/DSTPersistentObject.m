@@ -71,53 +71,77 @@
 
 #pragma mark - Setup
 
-+ (BOOL)checkMigrationWithContext:(DSTPersistenceContext *)context {
++ (DSTPersistenceContext *)checkMigrationWithContext:(DSTPersistenceContext *)context {
     // check version
     __block NSInteger version;
     dispatch_sync(context.dispatchQueue, ^{
         version = [context versionForTable:[self tableName]];
     });
-    if (version < 0) return NO;
+    if (version < 0) return context;
+
+    // migrate if neccessary
     if ([self version] != version) {
-        DSTPersistenceContext *fromContext = [[DSTPersistenceContext alloc] initWithDatabase:[context databaseFile] readonly:YES];
-        [fromContext setLazyLoadingEnabled:NO];
+        DSTPersistenceContext *fromContext;
+        DSTPersistenceContext *toContext;
 
-        DSTPersistenceContext *toContext = [DSTPersistenceContext duplicateContextInTemporaryFile:context];
-        [toContext beginTransaction];
+        BOOL migrationStart = NO;
+        if (![context migrationFromContext]) {
+            fromContext = [[DSTPersistenceContext alloc] initWithDatabase:[context databaseFile] readonly:YES];
+            [fromContext setLazyLoadingEnabled:NO];
+            [context setMigrationFromContext:toContext];
 
-        NSArray *pkids = [fromContext pkidsForTable:[self tableName]];
-        for (NSNumber *pkid in pkids) {
-            DSTPersistentObject *obj = (DSTPersistentObject *)[[[self class] alloc] initForMigrationWithIdentifier:[pkid integerValue] forContext:fromContext];
+            migrationStart = YES;
 
-            // drop table at first run and recreate
-            if (pkids[0] == pkid) {
-                [obj setContext:toContext];
-                [toContext deleteTable:[self tableName]];
-                [obj createTable];
-            }
-
-            // save all loaded objects in new context and deregister them from old context
-            NSSet *regObjs = [fromContext registeredObjects];
-            for (DSTPersistentObject *o in regObjs) {
-                [o markAsChanged];
-                [o setContext:toContext];
-                [toContext registerObject:o];
-                [fromContext deRegisterObject:o];
-            }
-
-            // migrate and save
-            [obj migrateFromVersion:version additionalData:nil];
-            for (DSTPersistentObject *o in regObjs) {
-                [o save];
-            }
+            toContext = [DSTPersistenceContext duplicateContextInTemporaryFile:context];
+            [context setMigrationToContext:toContext];
+        } else {
+            fromContext = [context migrationFromContext];
+            toContext = [context migrationToContext];
         }
-        [toContext endTransaction];
-        [DSTPersistenceContext exchangeContext:context fromTemporaryContext:toContext];
-    } else {
-        // no migration
-        return NO;
+
+        if ([toContext versionForTable:[self tableName]] != [self version]) {
+            [fromContext setMigrationFromContext:fromContext];
+            [fromContext setMigrationToContext:toContext];
+            NSArray *pkids = [fromContext pkidsForTable:[self tableName]];
+            for (NSNumber *pkid in pkids) {
+                DSTPersistentObject *obj = (DSTPersistentObject *)[[[self class] alloc] initForMigrationWithIdentifier:[pkid integerValue] forContext:fromContext];
+
+                // drop table at first run and recreate
+                if (pkids[0] == pkid) {
+                    [obj setContext:toContext];
+                    [toContext deleteTable:[self tableName]];
+                    [obj createTable];
+                    [toContext beginTransaction];
+                }
+
+                // save all loaded objects in new context and deregister them from old context
+                NSSet *regObjs = [fromContext registeredObjects];
+                for (DSTPersistentObject *o in regObjs) {
+                    [o setContext:toContext];
+                    [toContext registerObject:o];
+                    [fromContext deRegisterObject:o];
+                }
+
+                // migrate and save
+                [obj migrateFromVersion:version additionalData:nil];
+                for (DSTPersistentObject *o in regObjs) {
+                    [o markAsChanged];
+                    [o save];
+                }
+            }
+        } else {
+            DebugLog(@"Migration for %@ already done.", [self class]);
+        }
+
+        if (migrationStart) {
+            [toContext endTransaction];
+            [DSTPersistenceContext exchangeContext:context fromTemporaryContext:toContext];
+            [context setMigrationFromContext:nil];
+            [context setMigrationToContext:nil];
+        }
+        return toContext;
     }
-    return YES;
+    return context;
 }
 
 - (DSTPersistentObject *)initForMigrationWithIdentifier:(NSInteger)theIdentifier forContext:(DSTPersistenceContext *)theContext {
@@ -178,17 +202,22 @@
 
     self = [super init];
     if (self) {
-        _context = theContext;
 		identifier = theIdentifier;
 
-        BOOL migration = [[self class] checkMigrationWithContext:_context];
+        DSTPersistenceContext *migrationContext = [[self class] checkMigrationWithContext:theContext];
+        if (theContext != migrationContext) {
+            _context = migrationContext;
+        } else {
+            _context = theContext;
+        }
 
         if (![self loadFromContext]) {
             return nil;
         }
+        _context = theContext;
         [_context registerObject:self];
 
-        if (migration) {
+        if (theContext != migrationContext) {
             dirty = YES;
         } else {
             dirty = NO;
@@ -426,7 +455,11 @@
 			[self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
 		} else if (([propertyType hasPrefix:@"I"]) || ([propertyType hasPrefix:@"i"]) || ([propertyType hasPrefix:@"l"]) || ([propertyType hasPrefix:@"L"]) || ([propertyType hasPrefix:@"c"]) || ([propertyType hasPrefix:@"C"]) || ([propertyType hasPrefix:@"B"]) || ([propertyType hasPrefix:@"q"]) || ([propertyType hasPrefix:@"Q"])) {
 			// some form of integer
-			[self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
+            if (([data objectForKey:[propertyName lowercaseString]]) && (![[data objectForKey:[propertyName lowercaseString]] isKindOfClass:[NSNull class]])) {
+                [self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
+            } else {
+                [self setValue:@(0) forKey:propertyName];
+            }
 		} else if (([propertyType hasPrefix:@"@\"NSString"]) || ([propertyType hasPrefix:@"@\"NSMutableString"])) {
 			// string
 			if ([data objectForKey:[propertyName lowercaseString]]) {
@@ -496,7 +529,9 @@
             }
 		} else if ([propertyType hasPrefix:@"{"]) {
 			// here we have to handle structs, we currently can only do those that have NSValue support
-			[self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:_context parent:self] forKey:propertyName];
+            if (([data objectForKey:[propertyName lowercaseString]]) && (![[data objectForKey:[propertyName lowercaseString]] isKindOfClass:[NSNull class]])) {
+                [self setValue:[DSTCustomUnArchiver unarchiveObjectWithData:[data objectForKey:[propertyName lowercaseString]] inContext:_context parent:self] forKey:propertyName];
+            }
 		} else {
 			Log(@"Could not decode type %@, so will not try to", propertyType);
 		}
