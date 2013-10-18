@@ -452,7 +452,11 @@
 		// now parse property types into classes
 		if (([propertyType hasPrefix:@"f"]) || ([propertyType hasPrefix:@"s"]) || ([propertyType hasPrefix:@"d"])) {
 			// float
-			[self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
+            if (([data objectForKey:[propertyName lowercaseString]]) && (![[data objectForKey:[propertyName lowercaseString]] isKindOfClass:[NSNull class]])) {
+                [self setValue:[data objectForKey:[propertyName lowercaseString]] forKey:propertyName];
+            } else {
+                [self setValue:@(0.0) forKey:propertyName];
+            }
 		} else if (([propertyType hasPrefix:@"I"]) || ([propertyType hasPrefix:@"i"]) || ([propertyType hasPrefix:@"l"]) || ([propertyType hasPrefix:@"L"]) || ([propertyType hasPrefix:@"c"]) || ([propertyType hasPrefix:@"C"]) || ([propertyType hasPrefix:@"B"]) || ([propertyType hasPrefix:@"q"]) || ([propertyType hasPrefix:@"Q"])) {
 			// some form of integer
             if (([data objectForKey:[propertyName lowercaseString]]) && (![[data objectForKey:[propertyName lowercaseString]] isKindOfClass:[NSNull class]])) {
